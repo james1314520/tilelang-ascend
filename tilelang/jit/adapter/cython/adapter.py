@@ -12,7 +12,6 @@ from tvm import tir
 from tvm.relay import TensorType
 from tilelang.jit.adapter.wrapper import TLWrapper
 from tilelang.jit.adapter.libgen import LibraryGenerator
-from tilelang.jit.adapter.utils import is_cuda_target, is_hip_target, is_cpu_target
 from tilelang.utils.target import determine_target
 from tilelang.utils.language import retrieve_func_from_module
 from tilelang.utils.tensor import map_torch_type
@@ -235,7 +234,8 @@ class CythonKernelAdapter(BaseKernelAdapter):
         else:
             self.ir_module = func_or_mod
 
-        self.target = Target.canon_target(determine_target(target))
+        # # self.target = Target.canon_target(determine_target(target))
+        # self.target = tvm.target.Target.from_device('cpu')
 
         self.dynamic_symbolic_map = self._process_dynamic_symbolic()
         self.buffer_dtype_map = self._process_buffer_dtype()
@@ -244,8 +244,8 @@ class CythonKernelAdapter(BaseKernelAdapter):
         self.buffer_device_map = self._process_buffer_device()
 
         self.verbose = verbose
-        self.wrapper = TLWrapper(self.target)
-        self.lib_generator = LibraryGenerator(self.target)
+        self.wrapper = TLWrapper("npu")
+        self.lib_generator = LibraryGenerator("npu")
 
         self.wrapper.assign_optimized_module(self.ir_module)
         self.wrapper.assign_pass_configs(pass_configs)
@@ -257,12 +257,13 @@ class CythonKernelAdapter(BaseKernelAdapter):
         self.lib_generator.compile_lib()
         self.lib = self.lib_generator.load_lib()
 
-        self.lib.get_last_error.restype = ctypes.c_char_p
-        result = self.lib.init()
-        if result != 0:
-            error_msg = self.lib.get_last_error().decode('utf-8')
-            error_msg += f"\n{self.lib_code}"
-            raise RuntimeError(f"Initialization failed: {error_msg}")
+        # TODO: support npu
+        # self.lib.get_last_error.restype = ctypes.c_char_p
+        # result = self.lib.init()
+        # if result != 0:
+        #     error_msg = self.lib.get_last_error().decode('utf-8')
+        #     error_msg += f"\n{self.lib_code}"
+        #     raise RuntimeError(f"Initialization failed: {error_msg}")
 
         self.cython_wrapper = CythonKernelWrapper(self.result_idx, self.params, self.lib)
         self.cython_wrapper.set_dynamic_symbolic_map(self.dynamic_symbolic_map)
@@ -403,13 +404,7 @@ class CythonKernelAdapter(BaseKernelAdapter):
         params = func.params
         buffer_map = func.buffer_map
         buffer_device_map = {}
-        device = None
-        if is_cuda_target(self.target) or is_hip_target(self.target):
-            device = torch.device("cuda")
-        elif is_cpu_target(self.target):
-            device = torch.device("cpu")
-        else:
-            raise ValueError(f"Unsupported target: {self.target}")
+        device = torch.device("npu")
 
         for i, param in enumerate(params):
             if param in buffer_map:

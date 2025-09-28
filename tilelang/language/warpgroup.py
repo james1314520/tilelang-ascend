@@ -7,6 +7,7 @@ from tvm._ffi import register_object
 from tilelang import _ffi_api
 from .kernel import get_thread_bindings, get_thread_extents
 from typing import List
+import threading
 
 
 @register_object("tl.WarpSpecializeFrame")
@@ -58,3 +59,36 @@ def WarpSpecialize(*warp_group_idx):
 
 # Alias for WarpSpecialize for more concise usage
 ws = WarpSpecialize
+
+_local = threading.local()
+
+
+@register_object("tl.ScopeFrame")
+class ScopeFrame(TIRFrame):
+    """
+    WarpSpecializeFrame is a custom TIRFrame that manages warp group indices
+    and handles the entry and exit of the kernel launch scope.
+    """
+
+
+def Scope(name):
+    """Tools to construct a warp group frame.
+
+    Parameters
+    ----------
+    warp_group_idx : int
+        A integer representing warp group index
+        Or a list of integers representing blockDim.(x|y|z)
+        if the value is -1, we skip the threadIdx.x binding.
+
+    Returns
+    -------
+    res : Tuple[frame.LaunchThreadFrame]
+        The result LaunchThreadFrame.
+    Examples:
+        >>> T.ws(0) -> if tx < 128
+        >>> T.ws(1) -> if tx >= 128 and tx < 256
+        >>> T.ws(0, 1) -> if tx < 128 or (tx >= 128 and tx < 256)
+    """
+
+    return _ffi_api.Scope(name)

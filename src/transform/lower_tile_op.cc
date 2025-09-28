@@ -435,10 +435,11 @@ private:
       thread_bounds = Range::FromMinExtent(0, 1);
     }
 
-    auto lowered = tile_op->Lower(
-        LowerArgs{target_, thread_bounds, thread_var_->var, callback,
-                  layout_map_, buffer_remap_, disable_tma_lower},
-        analyzer_);
+    auto lowered =
+        tile_op->Lower(LowerArgs{target_, thread_bounds, thread_var_->var,
+                                 callback, layout_map_, buffer_remap_,
+                                 disable_tma_lower, resource_scope_},
+                       analyzer_);
     return IRMutatorWithAnalyzer::VisitStmt(lowered);
   }
 
@@ -451,6 +452,8 @@ private:
         ICHECK(iv->dom->extent.as<IntImmNode>());
         thread_block_size_ = iv->dom->extent.as<IntImmNode>()->value;
       }
+    } else if (op->attr_key == "resource_scope") {
+      resource_scope_ = Downcast<IntImm>(op->value)->value;
     }
     return arith::IRMutatorWithAnalyzer::VisitStmt_(op);
   }
@@ -471,6 +474,7 @@ private:
   // Mapping from data Var of a Buffer to Buffer, for lookup
   std::unordered_map<Var, Buffer, ObjectPtrHash, ObjectPtrEqual> buffer_map_;
   Map<Var, Var> var_remap_;
+  int resource_scope_ = 0;
 };
 
 namespace transform {
