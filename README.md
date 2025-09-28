@@ -2,240 +2,217 @@
 
 <div align="center">
 
-# Tile Language
+# TileLang-Ascend
 
 </div>
 
-Tile Language (**tile-lang**) is a concise domain-specific language designed to streamline the development of high-performance GPU/CPU kernels (e.g., GEMM, Dequant GEMM, FlashAttention, LinearAttention). By employing a Pythonic syntax with an underlying compiler infrastructure on top of [TVM](https://tvm.apache.org/), tile-lang allows developers to focus on productivity without sacrificing the low-level optimizations necessary for state-of-the-art performance.
+Tile Language Ascend (**tilelang-ascend**) is a specialized variant of the tile-lang domain-specific language, specifically optimized for Huawei Ascend NPU (Neural Processing Unit) architecture. Built upon the foundation of tile-lang's Pythonic syntax and [TVM](https://tvm.apache.org/) compiler infrastructure, tilelang-ascend enables developers to efficiently create high-performance AI compute kernels tailored for Ascend processors, including operations like GEMM, vector operations, and attention mechanisms. Tilelang-ascend allows developers to focus on productivity without sacrificing the low-level optimizations necessary for state-of-the-art performance on the NPU.
+
+Within the TileLang ecosystem, we have developed an NPU Intermediate Representation (NPUIR) infrastructure specifically for Ascend, enabling seamless integration into the open-source AI compiler ecosystem based on MLIR. This effort not only enhances the openness and extensibility of the compiler stack but also provides developers with a more flexible and efficient pathway for custom operator development. The compiler backend supports two technical routes: [NPUIR](https://github.com/tile-ai/tilelang-ascend/tree/npuir) and [Ascend C & PTO](https://github.com/tile-ai/tilelang-ascend/tree/ascendc_pto).
 
 <img src=./images/MatmulExample.png />
+<div align="center">
+<img src=./images/npuir_architecture.png style="width: 50%";/>
+</div>
+
 
 ## Latest News
-- 14/04/2025 🚀: Added high-performance FlashMLA implementation for AMD MI300X, achieving performance parity with hand-optimized assembly kernels of Aiter! See [example_mla_amd](./examples/deepseek_mla/amd/README.md) for details.
-- 03/03/2025 🚀: Added high-performance MLA Decoding support using only 80 lines of Python code, achieving performance on par with FlashMLA on H100 (see [example_mla_decode.py](./examples/deepseek_mla/example_mla_decode.py))! We also provide [documentation](./examples/deepseek_mla/README.md) explaining how TileLang achieves this.
-- 02/15/2025 ✨: Added WebGPU Codegen support, see [Pull Request #86](https://github.com/tile-ai/tilelang/pull/86)!
-- 02/12/2025 ✨: Excited to announce the release of [v0.1.0](https://github.com/tile-ai/tilelang/releases/tag/v0.1.0)!
-- 02/10/2025 🚀: Added debug tools for TileLang—`T.print` for printing variables/buffers ([docs](https://tilelang.com/tutorials/debug_tools_for_tilelang.html)) and a memory layout plotter ([examples/plot_layout](./examples/plot_layout)).
-- 01/20/2025 ✨: We are excited to announce that tile-lang, a dsl for high performance AI workloads, is now open source and available to the public!
+- 29/09/2025 🚀: Officially establish the NPU Intermediate Representation (NPUIR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
 
 ## Tested Devices
-Although tile-lang aims to be portable across a range of Devices, it has been specifically tested and validated on the following devices: for NVIDIA GPUs, this includes the H100 (with Auto TMA/WGMMA support), A100, V100, RTX 4090, RTX 3090, and RTX A6000; for AMD GPUs, it includes the MI250 (with Auto MatrixCore support) and the MI300X (with Async Copy support).
+Although TileLang aims to support portability across a variety of devices, it has been specifically tested and validated on the following hardware:Huawei Ascend AI accelerators,including Ascend 310-based inference cards and Ascend 910-based training cards.
+
 
 ## OP Implementation Examples
 **tile-lang** provides the building blocks to implement a wide variety of operators. Some examples include:
 
-- [Matrix Multiplication](./examples/gemm/)
-- [Dequantization GEMM](./examples/dequantize_gemm/)
-- [Flash Attention](./examples/flash_attention/)
-- [Flash Linear Attention](./examples/linear_attention/)
-- [Flash MLA Decoding](./examples/deepseek_mla/)
-- [Native Sparse Attention](./examples/native_sparse_attention/)
+- [Vector Add](./examples/vec_add_1d.py)
+- [Flash Attention](./examples/flash_attn_npuir.py)
 
 Within the `examples` directory, you will also find additional complex kernels—such as convolutions, forward/backward passes for FlashAttention, more operators will continuously be added.
 
 
-## Benchmark Summary
-
-TileLang achieves exceptional performance across a variety of computational patterns. Comprehensive benchmark scripts and settings are available at [tilelang-benchmark](https://github.com/tile-ai/tilelang-benchmark). Below are selected results showcasing its capabilities:
-
-- MLA Decoding Performance on H100
-
-  <div style="display: flex; gap: 10px; justify-content: center;">
-    <div style="flex: 1;">
-      <img src="./examples/deepseek_mla/figures/bs64_float16.png" alt="mla decode performance bs64 on H100" width="100%" />
-    </div>
-    <div style="flex: 1;">
-      <img src="./examples/deepseek_mla/figures/bs128_float16.png" alt="mla decode performance bs128 on H100" width="100%" />
-    </div>
-  </div>
-  
-- Flash Attention Performance on H100
-
-  <div align="center">    <img src="./images/mha_performance_h100.png" alt="operator performance on H100" width=80% />
-  </div>
-
-- Matmul Performance on GPUs (RTX 4090, A100, H100, MI300X)
-
-  <div>
-    <img src="./images/op_benchmark_consistent_gemm_fp16.png" alt="gemm fp16 performance on Gpus" />
-  </div>
-
-- Dequantize Matmul Performance on A100
-
-  <div>
-    <img src="./images/op_benchmark_a100_wq_gemv.png" alt="dequantize gemv performance on A100" />
-  </div>
-
 ## Installation
-### Method 1: Install with Pip
+### Environment Setup
 
-The quickest way to get started is to install the latest release from PyPI:
+Install the Ascend Toolkit.
 
-```bash
-pip install tilelang
+[Download the installation package](https://www.hiascend.com/developer/download/community/result?cann=8.3.RC1.alpha002)，install`Ascend-cann-toolkit`.For complete installation instructions, refer to the [relevant documentation](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/83RC1alpha002/softwareinst/instg/instg_0008.html?Mode=PmIns&OS=Debian&Software=cannToolKit).
+
+```shell
+chmod +x Ascend-cann-toolkit_{ascend-cann-toolkit version}_linux-aarch64.run
+./Ascend-cann-toolkit_{ascend-cann-toolkit version}_linux-aarch64.run --install
 ```
 
-Alternatively, you can install directly from the GitHub repository:
+Configure environment variables:
 
-```bash
-pip install git+https://github.com/tile-ai/tilelang
+```
+source /path/to/install/Ascend/ascend-toolkit/set_env.sh
 ```
 
-Or install locally:
+Prepare a Python environment with Python version between 3.7.*x* and 3.11.4 (inclusive) and ensure that `pip3` is available.
 
-```bash
-# install required system dependencies
-sudo apt-get update
-sudo apt-get install -y python3-setuptools gcc libtinfo-dev zlib1g-dev build-essential cmake libedit-dev libxml2-dev
 
-pip install -e . -v # remove -e option if you don't want to install in editable mode, -v for verbose output
+   Ascend Toolkit Installation Requirements
+
+   ```shell
+   pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py
+   ```
+
+<!-- 部署Bisheng编译器: -->
+Deploy the Bisheng compiler:
+
+
+   ```shell
+   export BISHENG_INSTALL_PATH=/path/to/bishengir-compile
+   ```
+   <!-- 补充环境变量设置 -->
+   Set Environment Variables
+
+```shell
+export ACL_OP_INIT_MODE=1
+```
+  <!-- 注意：如果用户需要新的编译器安装包，请联系社区管理员zhaojiqiao@huawei.com,yangsichan@huawei.com TEL:15901269653 -->
+
+  Note: If you require a new compiler installation package, please contact the community administrators:  
+**zhaojiqiao@huawei.com**, **yangsichan@huawei.com**  
+
+
+   
+
+#### Build
+
+<!-- 拉取代码 -->
+Pull the code
+
+```shell
+git clone https://github.com/tile-ai/tilelang-ascend.git --recursive -b npuir
 ```
 
-### Method 2: Build from Source
-We currently provide three ways to install **tile-lang** from source:
- - [Install from Source (using your own TVM installation)](./docs/get_started/Installation.md#method-1-install-from-source-using-your-own-tvm-installation)
- - [Install from Source (using the bundled TVM submodule)](./docs/get_started/Installation.md#method-2-install-from-source-using-the-bundled-tvm-submodule)
- - [Install Using the Provided Script](./docs/get_started/Installation.md#method-3-install-using-the-provided-script)
+<!-- 执行安装脚本 -->
+Run the installation script
 
-### Method 3: Install with Nightly Version
-
-For users who want access to the latest features and improvements before official releases, we provide nightly builds of **tile-lang**.
-
-```bash
-pip install tilelang -f https://tile-ai.github.io/whl/nightly/cu121/
-# or pip install tilelang --find-links https://tile-ai.github.io/whl/nightly/cu121/
+```shell
+cd tilelang-ascend
+chmod +x ./install_npuir.sh
+./install_npuir.sh
 ```
 
-> **Note:** Nightly builds contain the most recent code changes but may be less stable than official releases. They're ideal for testing new features or if you need a specific bugfix that hasn't been released yet.
+Install torch_npu
+
+```shell
+pip install pybind11 torch_npu
+```
 
 ## Quick Start
 
-In this section, you'll learn how to write and execute a straightforward GEMM (matrix multiplication) kernel using tile-lang, followed by techniques for layout optimizations, pipelining, and L2-cache–friendly swizzling.
-
-### GEMM Example with Annotations (Layout, L2 Cache Swizzling, and Pipelining, etc.)
-
-Below is an example that demonstrates more advanced features: layout annotation, parallelized copy, and swizzle for improved L2 cache locality. This snippet shows how to adapt your kernel to maximize performance on complex hardware.
+This code implements a vector addition kernel using TileLang, a domain-specific language for NPU (Neural Processing Unit) programming. It defines a parallel kernel that adds two float32 vectors of length 4096 on the NPU by loading data into on-chip unified buffers, performing element-wise addition via a low-level NPU instruction (`npuir_add`), and writing the result back to global memory. The test function compares the kernel’s output against PyTorch’s native vector addition to verify correctness. The example runs on NPU device 6 and demonstrates basic TileLang workflow: kernel definition, compilation to NPU IR, and execution with PyTorch tensors.
 
 ```python
-import tilelang
-import tilelang.language as T
-# `make_mma_swizzle_layout` is a python defined layout function
-# specifically designed for for MMA operations
-# which ensures the consistency with the nvidia CUTLASS Library.
-# to avoid bank conflicts and maximize the performance.
-from tilelang.intrinsics import (
-    make_mma_swizzle_layout as make_swizzle_layout,)
+# Copyright (c) Tile-AI Corporation.
+# Licensed under the MIT License.
 
-# add decorator @tilelang.jit if you want to return a torch function
-# @tilelang.jit
-def matmul(M, N, K, block_M, block_N, block_K, dtype="float16", accum_dtype="float"):
+import os
+
+import tilelang
+import tilelang.language as T  # Import TileLang DSL for kernel definition
+
+import torch
+import torch_npu  # Import NPU (Neural Processing Unit) backend support for PyTorch
+
+# Clear any previously cached compiled kernels to ensure a clean run
+tilelang.cache.clear_cache()
+
+# Define data type and sequence length for the vector addition
+dtype = "float32"
+seq_len = 4096  # Length of the vectors to be added
+
+def vec_add(N, block_N, dtype="float32"):
+    """
+    Define a vector addition kernel using TileLang.
+    
+    Parameters:
+    - N: Total length of the vectors.
+    - block_N: Number of elements processed per kernel thread/block.
+    - dtype: Data type of the tensors (default: "float32").
+    
+    Returns:
+    - A TileLang prim_func representing the vector addition kernel.
+    """
+    n_num = N // block_N  # Number of blocks (each block processes `block_N` elements)
 
     @T.prim_func
     def main(
-        A: T.Tensor((M, K), dtype),
-        B: T.Tensor((K, N), dtype),
-        C: T.Tensor((M, N), dtype),
+        A: T.Tensor((N), dtype),  # Input tensor A
+        B: T.Tensor((N), dtype),  # Input tensor B
+        C: T.Tensor((N), dtype),  # Output tensor C = A + B
+        shape: T.int32,           # Actual size (used for handling tail cases if N is not divisible by block_N)
     ):
-        # Initialize Kernel Context
-        with T.Kernel(T.ceildiv(N, block_N), T.ceildiv(M, block_M), threads=128) as (bx, by):
-            A_shared = T.alloc_shared((block_M, block_K), dtype)
-            B_shared = T.alloc_shared((block_K, block_N), dtype)
-            C_local  = T.alloc_fragment((block_M, block_N), accum_dtype)
+        # Launch kernel with `n_num` parallel threads on the NPU
+        with T.Kernel(n_num, is_npu=True) as (cid, _):
+            # Allocate on-chip Unified Buffer (UB) for local computation
+            A_VEC = T.alloc_ub((block_N), dtype)
+            B_VEC = T.alloc_ub((block_N), dtype)
+            C_VEC = T.alloc_ub((block_N), dtype)
 
-            # Apply layout optimizations or define your own layout (Optional)
-            # If not specified, we will deduce the layout automatically
-            # T.annotate_layout({
-            #     A_shared: make_swizzle_layout(A_shared),
-            #     B_shared: make_swizzle_layout(B_shared),
-            # })
+            # Calculate the starting index for this thread
+            start_idx = cid * block_N
+            # Compute remaining elements from this start index to the end of the tensor
+            remaining = shape - start_idx
+            # Determine how many elements this thread should actually process (handles tail)
+            tail_size = T.min(block_N, remaining)
 
-            # Enable rasterization for better L2 cache locality (Optional)
-            # T.use_swizzle(panel_size=10, enable=True)
+            # Copy data from global memory (A, B) into on-chip buffers (A_VEC, B_VEC)
+            T.copy(A[start_idx], A_VEC, [tail_size])
+            T.copy(B[start_idx], B_VEC, [tail_size])
 
-            # Clear local accumulation
-            T.clear(C_local)
+            # Perform vector addition on the NPU using low-level NPU IR instruction
+            T.npuir_add(A_VEC, B_VEC, C_VEC)
 
-            for ko in T.Pipelined(T.ceildiv(K, block_K), num_stages=3):
-                # Copy tile of A
-                # This is a sugar syntax for parallelized copy
-                T.copy(A[by * block_M, ko * block_K], A_shared)
-
-                # Demonstrate parallelized copy from global to shared for B
-                for k, j in T.Parallel(block_K, block_N):
-                    B_shared[k, j] = B[ko * block_K + k, bx * block_N + j]
-
-                # Perform a tile-level GEMM on the shared buffers
-                # Currently we dispatch to the cute/hip on Nvidia/AMD GPUs
-                T.gemm(A_shared, B_shared, C_local)
-
-            # Copy result back to global memory
-            T.copy(C_local, C[by * block_M, bx * block_N])
+            # Write the result back from on-chip buffer (C_VEC) to global memory (C)
+            T.copy(C_VEC, C[start_idx], [tail_size])
 
     return main
 
+def test_vec_add():
+    """
+    Test function to validate the vector addition kernel.
+    Compares the result of the custom TileLang kernel against PyTorch's native addition.
+    """
+    # Set the target NPU device (device ID 6 in this case)
+    torch.npu.set_device(6)
 
-# 1. Define the kernel (matmul) with the desired dimensions
-func = matmul(1024, 1024, 1024, 128, 128, 32)
+    # Instantiate the vector addition kernel for the full sequence length (single block)
+    func = vec_add(seq_len, seq_len)
 
-# 2. Compile the kernel into a torch function
-# out_idx specifies the index of the output buffer in the argument list
-# if out_idx is specified, the tensor will be created during runtime
-# target currently can be "cuda" or "hip" or "cpu".
-jit_kernel = tilelang.compile(func, out_idx=[2], target="cuda")
+    # Compile the TileLang function to NPU IR for execution on the NPU
+    compiled_kernel = tilelang.compile(func, target="npuir")
 
-# 3. Test the kernel in Python with PyTorch data
-import torch
+    # Create random input tensors on the NPU
+    v1 = torch.randn(size=[seq_len], dtype=eval("torch." + dtype)).npu()
+    v2 = torch.randn(size=[seq_len], dtype=eval("torch." + dtype)).npu()
+    v3 = torch.zeros(size=[seq_len], dtype=eval("torch." + dtype)).npu()  # Output buffer
 
-# Create random input tensors on the GPU
-a = torch.randn(1024, 1024, device="cuda", dtype=torch.float16)
-b = torch.randn(1024, 1024, device="cuda", dtype=torch.float16)
+    # Compute reference result using PyTorch's native addition (on NPU)
+    y_ref = v1 + v2
 
+    # Launch the compiled TileLang kernel
+    compiled_kernel(v1, v2, v3, seq_len)
 
-# Run the kernel through the JIT-compiled function
-c = jit_kernel(a, b)
+    # Print both results for visual comparison (should be nearly identical)
+    print("Reference result (PyTorch):")
+    print(y_ref)
+    print("TileLang kernel result:")
+    print(v3)
 
-# Reference multiplication using PyTorch
-ref_c = a @ b
+if __name__ == "__main__":
+    test_vec_add()
+  ```
 
-# Validate correctness
-torch.testing.assert_close(c, ref_c, rtol=1e-2, atol=1e-2)
-print("Kernel output matches PyTorch reference.")
-
-# 4. Retrieve and inspect the generated CUDA source (optional)
-cuda_source = jit_kernel.get_kernel_source()
-print("Generated CUDA kernel:\n", cuda_source)
-
-# 5.Pofile latency with the profiler
-profiler = jit_kernel.get_profiler()
-
-latency = profiler.do_bench()
-
-print(f"Latency: {latency} ms")
-```
-
-### Dive Deep into TileLang Beyond GEMM
-
-In addition to GEMM, we provide a variety of examples to showcase the versatility and power of TileLang, including:
-
-- [Dequantize GEMM](./examples/dequantize_gemm/): Achieve high-performance dequantization by **fine-grained control over per-thread operations**, with many features now adopted as default behaviors in [BitBLAS](https://github.com/microsoft/BitBLAS), which utilizing magic layout transformation and intrins to accelerate dequantize gemm.
-- [FlashAttention](./examples/flash_attention/): Enable cross-operator fusion with simple and intuitive syntax, and we also provide an example of auto tuning.
-- [LinearAttention](./examples/linear_attention/): Examples include RetNet and Mamba implementations.
-- [Convolution](./examples/convolution/): Implementations of Convolution with IM2Col.
-
-## Upcoming Features
-
-Check our [tilelang v0.2.0 release plan](https://github.com/tile-ai/tilelang/issues/79) for upcoming features.
-
----
-
-TileLang has now been used in project [BitBLAS](https://github.com/microsoft/BitBLAS) and [AttentionEngine](https://github.com/microsoft/AttentionEngine).
-
-## Join the Discussion
-
-Welcome to join our Discord community for discussions, support, and collaboration!
-
-[![Join our Discord](https://img.shields.io/badge/Discord-Join%20Us-blue?logo=discord&style=for-the-badge)](https://discord.gg/TUrHyJnKPG)
+## Roadmap
+<img src="./images/roadmap.png" alt="插图3" />
 
 ## Acknowledgements
 
-We would like to express our gratitude to the [TVM](https://github.com/apache/tvm) community for their invaluable contributions. The initial version of this project was mainly developed by [LeiWang1999](https://github.com/LeiWang1999), [chengyupku](https://github.com/chengyupku) and [nox-410](https://github.com/nox-410) with supervision from Prof. [Zhi Yang](https://yangzhihome.github.io) at Peking University. Part of this work was carried out during an internship at Microsoft Research, where Dr. Lingxiao Ma, Dr. Yuqing Xia, Dr. Jilong Xue, and Dr. Fan Yang offered valuable advice and support. We deeply appreciate their mentorship and contributions.
+Peking University Kunpeng & Ascend Center for Excellence in Science, Education, Innovation
+
