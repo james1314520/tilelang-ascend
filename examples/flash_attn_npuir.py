@@ -7,7 +7,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import argparse
 
 import torch
-torch.npu.set_device(6)
+
+torch.npu.set_device(0)
 
 import tilelang
 import tilelang.language as T
@@ -17,24 +18,33 @@ tilelang.cache.clear_cache()
 
 parser = argparse.ArgumentParser(description="NPU Kernel Compilation")
 
-parser.add_argument("--dtype", type=str, default="float16",
-                    help="Data type for matrix operations (e.g., float16)")
-parser.add_argument("--accum_dtype", type=str, default="float32",
-                    help="Data type for accumulation and vector operations (higher precision for numerical stability)")
-parser.add_argument("--seq_len", type=int, default=4096,
-                    help="Sequence length of input tensors")
-parser.add_argument("--dim", type=int, default=128,
-                    help="Feature dimension size (hidden dimension)")
-parser.add_argument("--block_m", type=int, default=128,
-                    help="Block size for the sequence length dimension in tiling")
-parser.add_argument("--block_n", type=int, default=128,
-                    help="Block size for the key/value sequence length dimension in tiling")
-parser.add_argument("--block_k", type=int, default=128,
-                    help="Block size for the feature dimension in tiling")
+parser.add_argument(
+    "--dtype", type=str, default="float16", help="Data type for matrix operations (e.g., float16)")
+parser.add_argument(
+    "--accum_dtype",
+    type=str,
+    default="float32",
+    help="Data type for accumulation and vector operations (higher precision for numerical stability)"
+)
+parser.add_argument("--seq_len", type=int, default=4096, help="Sequence length of input tensors")
+parser.add_argument(
+    "--dim", type=int, default=128, help="Feature dimension size (hidden dimension)")
+parser.add_argument(
+    "--block_m",
+    type=int,
+    default=128,
+    help="Block size for the sequence length dimension in tiling")
+parser.add_argument(
+    "--block_n",
+    type=int,
+    default=128,
+    help="Block size for the key/value sequence length dimension in tiling")
+parser.add_argument(
+    "--block_k", type=int, default=128, help="Block size for the feature dimension in tiling")
 
 
 def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
-    scale = (1.0 / dim) ** 0.5
+    scale = (1.0 / dim)**0.5
     shape = [seq_len, dim]
     shape2 = [seq_len, seq_len]
 
@@ -87,25 +97,41 @@ def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
                         tail_size_k = k * block_k
                         tail_size_k = dim - tail_size_k
                         tail_size_k = T.min(block_k, tail_size_k)
-                        T.npuir_load_nd2nz(Q[cid * block_m, k * block_k], l1_a, [tail_size_m, tail_size_k])
-                        T.npuir_load_nd2nz(K[i * block_n, k * block_k], l1_b, [tail_size_n, tail_size_k])
+                        T.npuir_load_nd2nz(Q[cid * block_m, k * block_k], l1_a,
+                                           [tail_size_m, tail_size_k])
+                        T.npuir_load_nd2nz(K[i * block_n, k * block_k], l1_b,
+                                           [tail_size_n, tail_size_k])
                         if k == 0:
-                            T.npuir_dot(l1_a, l1_b, l0_c, initC=True, b_transpose=True,
-                                        size=[tail_size_m, tail_size_k, tail_size_n])
+                            T.npuir_dot(
+                                l1_a,
+                                l1_b,
+                                l0_c,
+                                initC=True,
+                                b_transpose=True,
+                                size=[tail_size_m, tail_size_k, tail_size_n])
                         else:
-                            T.npuir_dot(l1_a, l1_b, l0_c, initC=False, b_transpose=True,
-                                        size=[tail_size_m, tail_size_k, tail_size_n])
+                            T.npuir_dot(
+                                l1_a,
+                                l1_b,
+                                l0_c,
+                                initC=False,
+                                b_transpose=True,
+                                size=[tail_size_m, tail_size_k, tail_size_n])
 
                     with T.rs("PIPE_FIX"):
-                        T.npuir_store_fixpipe(l0_c, workspace_1[cid * block_m, i * block_n],
-                                              size=[tail_size_m, tail_size_n],
-                                              enable_nz2nd=True)
+                        T.npuir_store_fixpipe(
+                            l0_c,
+                            workspace_1[cid * block_m, i * block_n],
+                            size=[tail_size_m, tail_size_n],
+                            enable_nz2nd=True)
                         T.sync_block_set(0)
 
                     with T.rs("PIPE_MTE2"):
                         T.sync_block_wait(0)
-                        T.npuir_load_nd2nz(workspace_2[cid * block_m, i * block_n], l1_a,
-                                           size=[tail_size_m, tail_size_n])
+                        T.npuir_load_nd2nz(
+                            workspace_2[cid * block_m, i * block_n],
+                            l1_a,
+                            size=[tail_size_m, tail_size_n])
 
                     for k in T.serial(T.ceildiv(dim, block_k)):
                         tail_size_k = k * block_k
@@ -113,11 +139,19 @@ def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
                         tail_size_k = T.min(block_k, tail_size_k)
                         by1 = i * dim
                         by2 = k * block_k
-                        T.npuir_load_nd2nz(V[i * block_n, k * block_k], l1_b, [tail_size_n, tail_size_k])
-                        T.npuir_dot(l1_a, l1_b, l0_c, initC=True, size=[tail_size_m, tail_size_n, tail_size_k])
-                        T.npuir_store_fixpipe(l0_c, workspace_3[cid * block_m, by1 + by2],
-                                              size=[tail_size_m, tail_size_k],
-                                              enable_nz2nd=True)
+                        T.npuir_load_nd2nz(V[i * block_n, k * block_k], l1_b,
+                                           [tail_size_n, tail_size_k])
+                        T.npuir_dot(
+                            l1_a,
+                            l1_b,
+                            l0_c,
+                            initC=True,
+                            size=[tail_size_m, tail_size_n, tail_size_k])
+                        T.npuir_store_fixpipe(
+                            l0_c,
+                            workspace_3[cid * block_m, by1 + by2],
+                            size=[tail_size_m, tail_size_k],
+                            enable_nz2nd=True)
 
                     with T.rs("PIPE_FIX"):
                         T.sync_block_set(0)
@@ -148,7 +182,10 @@ def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
                     T.copy(scores_max, scores_max_prev)
                     with T.rs("PIPE_MTE2"):
                         T.sync_block_wait(0)
-                        T.copy(workspace_1[bx, i * block_n], cross_kernel_f16_N, size=[real_m, tail_size_n])
+                        T.copy(
+                            workspace_1[bx, i * block_n],
+                            cross_kernel_f16_N,
+                            size=[real_m, tail_size_n])
                         T.npuir_cast(cross_kernel_f16_N, cross_kernel_f32_N, round_mode="rint")
 
                     T.npuir_mul(cross_kernel_f32_N, acc_c_scale, cross_kernel_f32_N)
@@ -168,7 +205,10 @@ def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
                     T.npuir_cast(cross_kernel_f32_N, cross_kernel_f16_N, round_mode="rint")
 
                     with T.rs("PIPE_MTE3"):
-                        T.copy(cross_kernel_f16_N, workspace_2[bx, i * block_n], size=[real_m, tail_size_n])
+                        T.copy(
+                            cross_kernel_f16_N,
+                            workspace_2[bx, i * block_n],
+                            size=[real_m, tail_size_n])
                         T.sync_block_set(0)
 
                     with T.rs("PIPE_MTE2"):
@@ -200,14 +240,15 @@ def generate_tensor(shape, dtype, clear=False):
 
 
 def run_test(main_args):
-    func = flashattn(main_args.dtype,
-                     main_args.accum_dtype,
-                     main_args.seq_len,
-                     main_args.dim,
-                     main_args.block_m,
-                     main_args.block_n,
-                     main_args.block_k,
-                     )
+    func = flashattn(
+        main_args.dtype,
+        main_args.accum_dtype,
+        main_args.seq_len,
+        main_args.dim,
+        main_args.block_m,
+        main_args.block_n,
+        main_args.block_k,
+    )
 
     compiled_kernel = tilelang.compile(func, target='npuir')
 
@@ -226,8 +267,9 @@ def run_test(main_args):
     w2 = generate_tensor(shape2, main_args.dtype, clear=True).npu()
     w3 = generate_tensor(shape3, main_args.dtype, clear=True).npu()
 
-    scale = (1.0 / main_args.dim) ** 0.5
-    ref_output = torch.nn.functional.softmax((q @ k.T).to(torch.float32) * scale, dim=-1).to(torch.float16) @ v
+    scale = (1.0 / main_args.dim)**0.5
+    ref_output = torch.nn.functional.softmax(
+        (q @ k.T).to(torch.float32) * scale, dim=-1).to(torch.float16) @ v
 
     compiled_kernel(q, k, v, o, w1, w2, w3)
     torch.set_printoptions(sci_mode=False)
@@ -243,7 +285,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_test(args)
-
-
-
-

@@ -13,15 +13,16 @@ tilelang.cache.clear_cache()
 dtype = "float32"
 seq_len = 4096
 
+
 def vec_add(N, block_N, dtype="float32"):
     n_num = N // block_N
 
     @T.prim_func
     def main(
-        A: T.Tensor((N), dtype),
-        B: T.Tensor((N), dtype),
-        C: T.Tensor((N), dtype),
-        shape: T.int32,
+            A: T.Tensor((N), dtype),
+            B: T.Tensor((N), dtype),
+            C: T.Tensor((N), dtype),
+            shape: T.int32,
     ):
         with T.Kernel(n_num, is_npu=True) as (cid, _):
             A_VEC = T.alloc_ub((block_N), dtype)
@@ -35,10 +36,12 @@ def vec_add(N, block_N, dtype="float32"):
 
             T.npuir_add(A_VEC, B_VEC, C_VEC)
             T.copy(C_VEC, C[cid * block_N], [tail_size])
+
     return main
 
+
 def test_vec_add():
-    torch.npu.set_device(6)
+    torch.npu.set_device(0)
     func = vec_add(seq_len, seq_len)
     compiled_kernel = tilelang.compile(func, target="npuir")
 
@@ -51,6 +54,7 @@ def test_vec_add():
 
     print(y_ref)
     print(v3)
+
 
 if __name__ == "__main__":
     test_vec_add()

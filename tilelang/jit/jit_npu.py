@@ -15,18 +15,20 @@ import torch_npu
 import functools
 from ..engine import lower
 
+
 def _get_npucompiler_path() -> str:
     # 设置编译器的环境变量
     ascend_home = os.environ.get('ASCEND_HOME_PATH')
     if ascend_home is None:
-      raise Exception("No cann environment detected")
+        raise Exception("No CAN environment detected")
     bishengir = os.path.join(ascend_home, "bisheng_toolkit", "bishengir", "bin")
     bisheng_install_path = os.environ.get("BISHENG_INSTALL_PATH")
     if bisheng_install_path is not None:
-      return os.path.join(bisheng_install_path, "bishengir-compile")
+        return os.path.join(bisheng_install_path, "bishengir-compile")
     else:
-      os.environ["BISHENG_INSTALL_PATH"] = bishengir
-      return os.path.join(bishengir, "bishengir-compile")
+        os.environ["BISHENG_INSTALL_PATH"] = bishengir
+        return os.path.join(bishengir, "bishengir-compile")
+
 
 def convert_sigtype_to_int(sigty: str):
     MAP_SIGTYPE_TO_INT = {
@@ -51,7 +53,10 @@ def convert_sigtype_to_int(sigty: str):
 
     return MAP_SIGTYPE_TO_INT[sigty]
 
-def generate_npu_wrapper_src(constants, signature, workspace_size, mix_mode, lock_num, lock_ini_val):
+
+def generate_npu_wrapper_src(constants, signature, workspace_size, mix_mode, lock_num,
+                             lock_ini_val):
+
     def _ty_to_cpp(ty):
         if ty[0] == '*':
             return "void*"
@@ -103,7 +108,7 @@ def generate_npu_wrapper_src(constants, signature, workspace_size, mix_mode, loc
     args:
         int gridX, gridY, gridZ;
         rtStream_t stream;
-        const void *functon;
+        const void *function;
         PyObject* packed_metadata, *launch_metadata;
         PyObject* launch_enter_hook, *launch_exit_hook;
         *args_expand
@@ -112,11 +117,11 @@ def generate_npu_wrapper_src(constants, signature, workspace_size, mix_mode, loc
 
     grid_info = {'X': 'i32', 'Y': 'i32', 'Z': 'i32'}
 
-    enable_taskqueue = os.getenv(
-        "TRITON_ENABLE_TASKQUEUE", 'true').lower() in ('true', '1')
+    enable_taskqueue = os.getenv("TRITON_ENABLE_TASKQUEUE", 'true').lower() in ('true', '1')
     enable_auto_map_parallel_blocks = False
     npu_utils = NPUUtils()
-    num_physical_blocks = npu_utils.get_aivector_core_num() if mix_mode == "aiv" else npu_utils.get_aicore_num()
+    num_physical_blocks = npu_utils.get_aivector_core_num(
+    ) if mix_mode == "aiv" else npu_utils.get_aicore_num()
     task_type = "MSPROF_GE_TASK_TYPE_AIV" if mix_mode == "aiv" else "MSPROF_GE_TASK_TYPE_AI_CORE"
     LINE_CHANGE_CHAR = chr(10)  # it is \n
 
@@ -304,7 +309,7 @@ extern "C" {
 
 static void _launch(const char* kernelName, const void* func, rtStream_t stream, int gridX, int gridY, int gridZ, std::vector<std::vector<int64_t>> &tensorShapes, std::vector<int> &tensorKinds, {arg_decls}) {{
   // only 1D parallelization is supported for NPU
-  // Pointer type becomes flattend 1-D Memref tuple: base_ptr, data_ptr, offset, shape, stride
+  // Pointer type becomes flattened 1-D Memref tuple: base_ptr, data_ptr, offset, shape, stride
   // base_ptr offset shape and stride are not used, arbitrarily set for now
   std::string name = "";
   name.append(kernelName);
@@ -480,6 +485,7 @@ PyMODINIT_FUNC PyInit___tilelang_launcher(void) {{
 }}
 """
 
+
 def generate_npu_utils_src():
     return """
 #define PY_SSIZE_T_CLEAN
@@ -636,6 +642,7 @@ PyMODINIT_FUNC PyInit_npu_utils(void) {
 }
 """
 
+
 def read_binary_file(file_path, mode='rb', chunk_size=None, return_type='bytes'):
     """
     Function to read a binary file
@@ -657,7 +664,7 @@ def read_binary_file(file_path, mode='rb', chunk_size=None, return_type='bytes')
     try:
         with open(file_path, mode) as file:
             if chunk_size:
-                # Read file in chunks 
+                # Read file in chunks
                 def chunk_reader():
                     while True:
                         chunk = file.read(chunk_size)
@@ -667,9 +674,10 @@ def read_binary_file(file_path, mode='rb', chunk_size=None, return_type='bytes')
                             yield bytearray(chunk)
                         else:
                             yield chunk
+
                 return chunk_reader()
             else:
-                # Read the entire file in one go 
+                # Read the entire file in one go
                 data = file.read()
                 if return_type == 'bytearray':
                     return bytearray(data)
@@ -680,7 +688,9 @@ def read_binary_file(file_path, mode='rb', chunk_size=None, return_type='bytes')
     except IOError as e:
         raise IOError(f"Error occurred while reading the file: {e}")
 
+
 class NPUUtils(object):
+
     def __new__(cls):
         if not hasattr(cls, 'instance'):
             cls.instance = super(NPUUtils, cls).__new__(cls)
@@ -715,25 +725,30 @@ class NPUUtils(object):
     def get_aivector_core_num(self):
         return self.get_device_properties("npu")["num_vectorcore"]
 
+
 class JitKernel_NPU:
-    def __init__(self, metadata : dict) -> None:
+
+    def __init__(self, metadata: dict) -> None:
         # 1 launch path
         self.so_launcher_path = f"{metadata['kernel_name']}.so"
         self.utils_name = f"{metadata['name']}"
         # 2 kernel path
         self.utils_kernel_src = metadata['kernel_src']
-        self.utils_shared = metadata['shared'] # 保留接口，暂不生效
+        self.utils_shared = metadata['shared']  # 保留接口，暂不生效
         self.mix_mode = metadata['mix_mode']
         self.utils_device = torch.npu.current_device()
         self.launch_stream = torch.npu.current_stream(torch.npu.current_device()).npu_stream
         self.launch_grid = metadata['grid']
-        self.launch_packedMetadata = {"kernel_name":f"{metadata['name']}", "tensor_kinds":metadata['tensor_kinds']}
+        self.launch_packedMetadata = {
+            "kernel_name": f"{metadata['name']}",
+            "tensor_kinds": metadata['tensor_kinds']
+        }
         self.launch_metadata = {}
         self.launch_enter_hook = None
         self.launch_exit_hook = None
         self._launch()
 
-    def _launch(self) :
+    def _launch(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("__tilelang_launcher", self.so_launcher_path)
         mod = importlib.util.module_from_spec(spec)
@@ -743,23 +758,26 @@ class JitKernel_NPU:
     def __call__(self, *args: Any) -> Any:
         npu_utils = NPUUtils()
         t_module, t_function, t_n_regs, t_n_spills = npu_utils.load_binary(
-            self.utils_name, self.utils_kernel_src, self.utils_shared, self.utils_device, self.mix_mode)
+            self.utils_name, self.utils_kernel_src, self.utils_shared, self.utils_device,
+            self.mix_mode)
         return self.launch_npu(self.launch_grid[0], self.launch_grid[1], self.launch_grid[2],
-         self.launch_stream, t_function, self.launch_packedMetadata, 
-         self.launch_metadata, self.launch_enter_hook, self.launch_exit_hook,
-         *args)
+                               self.launch_stream, t_function, self.launch_packedMetadata,
+                               self.launch_metadata, self.launch_enter_hook, self.launch_exit_hook,
+                               *args)
+
 
 class compiler_npu:
+
     def __init__(self) -> None:
         pass
 
-    def compile(self, mod : str) -> JitKernel_NPU:
+    def compile(self, mod: str) -> JitKernel_NPU:
         self.metadata = {}
         self.mod = mod
         # get grid message
         self._parse_grid()
         mlir_path = lower(mod)
-        if mlir_path.endswith(".mlir") :
+        if mlir_path.endswith(".mlir"):
             self.mlir_content = self._read_mlir_file(mlir_path)
         else:
             self.mlir_content = mlir_path
@@ -773,14 +791,16 @@ class compiler_npu:
         self.metadata['kernel_src'] = self._npuir_to_bin_enable_npu_compile()
         self.wrapper_utiles = generate_npu_utils_src()
         self.so_utils_path = self.make_npu_launcher_stub("npu_utils", self.wrapper_utiles)
-        self.wrapper_src = generate_npu_wrapper_src(self.constants, 
-            self.signature, self.workspace_size, self.metadata['mix_mode'], self.lock_num, self.lock_ini_val)
-        self.so_launcher_path = self.make_npu_launcher_stub(self.metadata['kernel_name'], self.wrapper_src)
+        self.wrapper_src = generate_npu_wrapper_src(self.constants, self.signature,
+                                                    self.workspace_size, self.metadata['mix_mode'],
+                                                    self.lock_num, self.lock_ini_val)
+        self.so_launcher_path = self.make_npu_launcher_stub(self.metadata['kernel_name'],
+                                                            self.wrapper_src)
         return JitKernel_NPU(metadata=self.metadata)
 
     def _parse_grid(self):
-      match = re.search(r'T\.launch_thread\("blockIdx\.x",\s*(\d+)\)', str(str(self.mod)))
-      self.metadata['grid'] = [int(match.group(1)), 1, 1]
+        match = re.search(r'T\.launch_thread\("blockIdx\.x",\s*(\d+)\)', str(str(self.mod)))
+        self.metadata['grid'] = [int(match.group(1)), 1, 1]
 
     def _read_mlir_file(self, file_path) -> str:
         """
@@ -796,7 +816,7 @@ class compiler_npu:
         except Exception as e:
             print(f"Error occurred while reading the file: {e}")
             return None
-    
+
     def _parse_npuir_metadata(self) -> None:
         """
         Parse NPU IR to extract metadata required for NPU compilation.
@@ -835,8 +855,10 @@ class compiler_npu:
         从MLIR文本中解析参数类型并返回字典
         """
         # 定义关心的数据类型
-        target_types = {"i1", "i8", "i16", "i32", "i64", "u32", "u64", 
-                       "fp16", "bf16", "fp32", "f32", "fp64", "f16"}
+        target_types = {
+            "i1", "i8", "i16", "i32", "i64", "u32", "u64", "fp16", "bf16", "fp32", "f32", "fp64",
+            "f16"
+        }
 
         # 提取函数签名部分（括号内的内容）
         pattern = r'func\.func\s*@[^(]*\(([^)]*)\)'
@@ -878,7 +900,7 @@ class compiler_npu:
             # 跳过以%arg开头的参数
             if re.match(r'%arg\d+', param.strip()):
                 continue
-            
+
             # 检查类型是否包含目标类型
             found_type = None
             for t_type in target_types:
@@ -920,17 +942,16 @@ class compiler_npu:
             npu_compiler_path = _get_npucompiler_path()
             # TileLang Ascend JIT Runtime now follows Triton JIT style.
             # bishengir-compile --enable-triton-kernel-compile=true make sure the way.
-            _compile_option_list = ["--enable-auto-multi-buffer=true", "--enable-triton-kernel-compile=true",
-                                    "--enable-hivm-compile=true", "--disable-hivm-tensor-compile=true"]
-            cmd_list = (
-                [npu_compiler_path, ttadapter_path]
-                + _compile_option_list
-                + ["-o", bin_file]
-            )
+            _compile_option_list = [
+                "--enable-auto-multi-buffer=true", "--enable-triton-kernel-compile=true",
+                "--enable-hivm-compile=true", "--disable-hivm-tensor-compile=true"
+            ]
+            cmd_list = ([npu_compiler_path, ttadapter_path] + _compile_option_list +
+                        ["-o", bin_file])
             ret = subprocess.run(cmd_list, capture_output=True, check=True)
             return Path(bin_path).read_bytes()
-    
-    def make_npu_launcher_stub(self, name : str, source : str ,debug=False):
+
+    def make_npu_launcher_stub(self, name: str, source: str, debug=False):
         """
         Generate the launcher stub to launch the kernel
         """
@@ -940,13 +961,13 @@ class compiler_npu:
                 f.write(source)
             so = self._build_npu_ext(name, src_path, tmpdir, kernel_launcher="torch")
             return so
-    
+
     def _get_ascend_path(self):
         return os.environ.get("ASCEND_HOME_PATH")
 
     def _check_cxx11_abi(self):
         import torch
-        return 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0    
+        return 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 
     def _build_npu_ext(self, obj_name: str, src_path, src_dir, *, kernel_launcher=None) -> str:
         so_path = f"{obj_name}.so"

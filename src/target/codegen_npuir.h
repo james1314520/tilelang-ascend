@@ -1,10 +1,10 @@
-//Copyright (c) Tile-AI Corporation
-// Licensed under the MIT License
+// Copyright (c) Tile-AI Corporation
+//  Licensed under the MIT License
 
 /*!
-* \file target/codegen.h
-* \brief Utility to generate code
-*/
+ * \file target/codegen.h
+ * \brief Utility to generate code
+ */
 #ifndef TVM_TL_TARGET_CODEGEN_CUDA_H_
 #define TVM_TL_TARGET_CODEGEN_CUDA_H_
 
@@ -19,8 +19,8 @@
 #include "target/source/codegen_c.h"
 #include "../op/op.h"
 
-namespace tvm{
-namespace codegen{
+namespace tvm {
+namespace codegen {
 
 enum class NPU_CORETYPE { AIC, AIV, MIX };
 
@@ -33,25 +33,25 @@ public:
 };
 
 class Scalar : public SSAType {
-  public:
+public:
   Scalar(String name, String type) {
     this->var_id = name;
     this->type_str = type;
   }
 
-  std::string printType() {return type_str;}
+  std::string printType() { return type_str; }
 };
 
-class Memref : public SSAType{
+class Memref : public SSAType {
   void GetIntStride();
 
 public:
   Memref(String name, Buffer buffer, bool is_arg = false);
   Memref(String name, Array<PrimExpr> shape_in, DataType dtype_in,
-    String address_space, bool var_offset_in,
-    Array<PrimExpr> stride_in = Array<PrimExpr>(), int offset_in = 0,
-    bool is_arg_in = false);
-  std::string printType() {return type_str; }
+         String address_space, bool var_offset_in,
+         Array<PrimExpr> stride_in = Array<PrimExpr>(), int offset_in = 0,
+         bool is_arg_in = false);
+  std::string printType() { return type_str; }
   int dim;
   Array<PrimExpr> shape;
   Array<PrimExpr> stride;
@@ -74,64 +74,67 @@ public:
   void VisitStmt_(const tir::IfThenElseNode *op) final;
   void PrintStorageScope(const std::string &scope,
                          std::ostream &os) final;     // NOLINT(*)
-  void PrintType(DataType t, std::ostream &os) final;     // NOLINT(*)
+  void PrintType(DataType t, std::ostream &os) final; // NOLINT(*)
   void PrintShape(Array<PrimExpr> shape, std::string delimiter,
                   std::ostream &os); // Added function
-  void PrintSSAAssign(const std::string& target, const std::string& src, DataType t) final;
+  void PrintSSAAssign(const std::string &target, const std::string &src,
+                      DataType t) final;
 
-  //overload visitor
-  void VisitExpr_(const MinNode* op, std::ostream& os) final;
-  void VisitExpr_(const MaxNode* op, std::ostream& os) final;
-  void VisitExpr_(const AddNode* op, std::ostream& os) final;
-  void VisitExpr_(const AndNode* op, std::ostream& os) final;
-  void VisitExpr_(const OrNode* op, std::ostream& os) final;
-  void VisitExpr_(const SubNode* op, std::ostream& os) final;
-  void VisitExpr_(const MulNode* op, std::ostream& os) final;
-  void VisitExpr_(const DivNode* op, std::ostream& os) final;
-  void VisitExpr_(const LTNode* op, std::ostream& os) final;
-  void VisitExpr_(const LENode* op, std::ostream& os) final;
-  void VisitExpr_(const NENode* op, std::ostream& os) final;
-  void VisitExpr_(const EQNode* op, std::ostream& os) final;
-  void VisitExpr_(const GTNode* op, std::ostream& os) final;
-  void VisitExpr_(const GENode* op, std::ostream& os) final;
-  void VisitExpr_(const FloatImmNode* op, std::ostream& os) final;
-  void VisitExpr_(const IntImmNode* op, std::ostream& os) final;
-  void VisitExpr_(const CallNode* op, std::ostream& os) final;
-  void VisitExpr_(const FloorDivNode *op, std::ostream &os) ;
-  void VisitExpr_(const FloorModNode *op, std::ostream &os) ;
-  void VisitExpr_(const CastNode* op, std::ostream& os) final;
-  void VisitExpr_(const SelectNode* op, std::ostream& os) final;
-  void VisitStmt_(const AllocateNode* op) final;
-  void VisitStmt_(const AttrStmtNode* op) final;
-  void VisitStmt_(const LetStmtNode* op) final;
-  
+  // overload visitor
+  void VisitExpr_(const MinNode *op, std::ostream &os) final;
+  void VisitExpr_(const MaxNode *op, std::ostream &os) final;
+  void VisitExpr_(const AddNode *op, std::ostream &os) final;
+  void VisitExpr_(const AndNode *op, std::ostream &os) final;
+  void VisitExpr_(const OrNode *op, std::ostream &os) final;
+  void VisitExpr_(const SubNode *op, std::ostream &os) final;
+  void VisitExpr_(const MulNode *op, std::ostream &os) final;
+  void VisitExpr_(const DivNode *op, std::ostream &os) final;
+  void VisitExpr_(const LTNode *op, std::ostream &os) final;
+  void VisitExpr_(const LENode *op, std::ostream &os) final;
+  void VisitExpr_(const NENode *op, std::ostream &os) final;
+  void VisitExpr_(const EQNode *op, std::ostream &os) final;
+  void VisitExpr_(const GTNode *op, std::ostream &os) final;
+  void VisitExpr_(const GENode *op, std::ostream &os) final;
+  void VisitExpr_(const FloatImmNode *op, std::ostream &os) final;
+  void VisitExpr_(const IntImmNode *op, std::ostream &os) final;
+  void VisitExpr_(const CallNode *op, std::ostream &os) final;
+  void VisitExpr_(const FloorDivNode *op, std::ostream &os);
+  void VisitExpr_(const FloorModNode *op, std::ostream &os);
+  void VisitExpr_(const CastNode *op, std::ostream &os) final;
+  void VisitExpr_(const SelectNode *op, std::ostream &os) final;
+  void VisitStmt_(const AllocateNode *op) final;
+  void VisitStmt_(const AttrStmtNode *op) final;
+  void VisitStmt_(const LetStmtNode *op) final;
+
   // Override this as a work around for __grid_constant__ parameter
   void AddFunction(const GlobalVar &gvar, const PrimFunc &f);
   void AddFunctionForCoreType(const GlobalVar &gvar, const PrimFunc &f);
+
 private:
   template <typename T>
   std::string ScalarConvertType(T *imm, DataType targetDtype);
   void CallExternCodegen(const CallNode *op, std::ostream &os);
-  void AscendCopyCodegen(const CallNode *op, std::ostream& os);
-  void Nd2NzCodegen(const CallNode* op, std::ostream& os);
-  void VexpCodegen(const CallNode *op, std::ostream& os);
-  void VbrcCodegen(const CallNode *op, std::ostream& os);
-  void VcastCodegen(const CallNode *op, std::ostream& os);
-  void VreduceCodegen(const CallNode *op, std::ostream& os);
-  void FixpipeCodegen(const CallNode *op, std::ostream& os);
-  void DotCodegen(const CallNode *op, std::ostream& os);
-  void BinaryVecOpCodegen(const CallNode *op, std::string opName, std::ostream& os);
+  void AscendCopyCodegen(const CallNode *op, std::ostream &os);
+  void Nd2NzCodegen(const CallNode *op, std::ostream &os);
+  void VexpCodegen(const CallNode *op, std::ostream &os);
+  void VbrcCodegen(const CallNode *op, std::ostream &os);
+  void VcastCodegen(const CallNode *op, std::ostream &os);
+  void VreduceCodegen(const CallNode *op, std::ostream &os);
+  void FixpipeCodegen(const CallNode *op, std::ostream &os);
+  void DotCodegen(const CallNode *op, std::ostream &os);
+  void BinaryVecOpCodegen(const CallNode *op, std::string opName,
+                          std::ostream &os);
   template <typename T>
-  void SyncBlockSetCodegen(const  T &sync_op, std::ostream& os);
+  void SyncBlockSetCodegen(const T &sync_op, std::ostream &os);
   template <typename T>
-  void SyncBlockWaitCodegen(const  T &sync_op, std::ostream& os);
-  
-  void BarrierCodegen(const CallNode *op, std::ostream& os);
+  void SyncBlockWaitCodegen(const T &sync_op, std::ostream &os);
+
+  void BarrierCodegen(const CallNode *op, std::ostream &os);
   template <typename T>
-  void PipeFlagCodegen(const T &sync_op, std::ostream& os);
+  void PipeFlagCodegen(const T &sync_op, std::ostream &os);
   std::string PrintID(PrimExpr id);
   // Whether scope such as "__shared__" or "__constant__" is part of type.
-  bool IsScopePartOfType() const final {return false; }
+  bool IsScopePartOfType() const final { return false; }
 
   Array<String> GenConvertIndex(Array<PrimExpr> exprs);
   String GenSubviewFromRegion(const CallNode *region_node);
@@ -171,7 +174,7 @@ private:
 
   std::string block_id_;
 
-  int copy_num_{0}; //Add this var
+  int copy_num_{0}; // Add this var
 
   NPU_CORETYPE func_coretype;
 
@@ -180,12 +183,9 @@ private:
   // within during visiting tir ops.
   NPU_CORETYPE current_coretype;
 
-  tvm::tl::BufferMap vmap {tvm::tl::BufferMap()};
-}; 
+  tvm::tl::BufferMap vmap{tvm::tl::BufferMap()};
+};
 } // namespace codegen
 } // namespace tvm
 
-
-
-#endif //TVM_TL_TARGET_CODEGEN_CUDA_H_
-
+#endif // TVM_TL_TARGET_CODEGEN_CUDA_H_

@@ -72,7 +72,7 @@ def compile(
     if target == 'npuir':
         compile_npuir = compiler_npu()
         return compile_npuir.compile(func)
-    
+
     return cached(
         func=func,
         out_idx=out_idx,

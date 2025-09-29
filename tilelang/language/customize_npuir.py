@@ -23,7 +23,8 @@ def _get_extent(data):
         result = [x.extent for x in data.region]
     return result
 
-def _buffer_to_tile_region_with_extent(buffer: tir.Buffer, access_type: str, extent:[]):
+
+def _buffer_to_tile_region_with_extent(buffer: tir.Buffer, access_type: str, extent: []):
     """Convert a TVM buffer to a tile region descriptor.
 
     Args:
@@ -36,6 +37,7 @@ def _buffer_to_tile_region_with_extent(buffer: tir.Buffer, access_type: str, ext
     """
     mins = [0 for _ in buffer.shape]
     return region(T.BufferLoad(buffer, mins), access_type, *extent)
+
 
 def _to_region(data, access_type, extent):
     if isinstance(data, tir.Var) and T.has_let_value(data):
@@ -50,11 +52,9 @@ def _to_region(data, access_type, extent):
         return buffer_load_to_tile_region(data, access_type, extent[-len(data.buffer.shape):])
 
 
-def npuir_copy(
-    src: Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion],
-    dst: Union[tir.Buffer, tir.BufferLoad],
-    size: [] = []
-):
+def npuir_copy(src: Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion],
+               dst: Union[tir.Buffer, tir.BufferLoad],
+               size: [] = []):
     """Copy data between memory regions.
 
     Args:
@@ -102,6 +102,7 @@ def npuir_add(A, B, C):
     C = _to_region(C, "w", _get_extent(C))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_add"), A, B, C)
 
+
 def npuir_sub(A, B, C):
     """npuir sub at tile-level.
 
@@ -117,6 +118,7 @@ def npuir_sub(A, B, C):
     B = _to_region(B, "r", _get_extent(B))
     C = _to_region(C, "w", _get_extent(C))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_sub"), A, B, C)
+
 
 def npuir_mul(A, B, C):
     """npuir mul at tile-level.
@@ -134,6 +136,7 @@ def npuir_mul(A, B, C):
     C = _to_region(C, "w", _get_extent(C))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_mul"), A, B, C)
 
+
 def npuir_div(A, B, C):
     """npuir div at tile-level.
 
@@ -150,6 +153,7 @@ def npuir_div(A, B, C):
     C = _to_region(C, "w", _get_extent(C))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_div"), A, B, C)
 
+
 def npuir_max(A, B, C):
     """npuir max at tile-level.
 
@@ -165,6 +169,7 @@ def npuir_max(A, B, C):
     B = _to_region(B, "r", _get_extent(B))
     C = _to_region(C, "w", _get_extent(C))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_max"), A, B, C)
+
 
 def npuir_min(A, B, C):
     """npuir min at tile-level.
@@ -197,10 +202,14 @@ def npuir_exp(A, B):
     B = _to_region(B, "w", _get_extent(B))
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_exp"), A, B)
 
+
 def npuir_dot(A: Union[tir.Buffer, tir.Var],
-    B: Union[tir.Buffer, tir.Var],
-    C: Union[tir.Buffer, tir.Var],
-    size: [] = [], initC: bool = False, a_transpose: bool = False, b_transpose: bool = False):
+              B: Union[tir.Buffer, tir.Var],
+              C: Union[tir.Buffer, tir.Var],
+              size: [] = [],
+              initC: bool = False,
+              a_transpose: bool = False,
+              b_transpose: bool = False):
     """npuir dot at tile-level. C = C + A * B.
 
     Args:
@@ -228,10 +237,11 @@ def npuir_dot(A: Union[tir.Buffer, tir.Var],
     B = _to_region(B, "r", B_extent)
     C = _to_region(C, "rw", C_extent)
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_dot"), A, B, C, initC, a_transpose, b_transpose)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_dot"), A, B, C, initC, a_transpose,
+                           b_transpose)
 
 
-def npuir_load_nd2nz(src, dst, size = []):
+def npuir_load_nd2nz(src, dst, size=[]):
     """npuir nd2nz-load data from OUT to L1 at tile-level.
 
     Args:
@@ -250,7 +260,12 @@ def npuir_load_nd2nz(src, dst, size = []):
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_load_nd2nz"), src, dst, dst_continuous)
 
 
-def npuir_store_fixpipe(src, dst, size = [], enable_nz2nd = False, channel_split = False, pre_relu_mode = ""):
+def npuir_store_fixpipe(src,
+                        dst,
+                        size=[],
+                        enable_nz2nd=False,
+                        channel_split=False,
+                        pre_relu_mode=""):
     """npuir nd2nz-load data from OUT to L1 at tile-level.
 
     Args:
@@ -264,17 +279,17 @@ def npuir_store_fixpipe(src, dst, size = [], enable_nz2nd = False, channel_split
         tir.Call: A handle to the npuir_store_fixpipe operation
     """
 
-    assert((src.dtype == dst.dtype)
-           or (src.dtype == "float32" and dst.dtype == "float16")
-           or (src.dtype == "float32" and dst.dtype == "bfloat16")
-           or (src.dtype == "int32" and dst.dtype == "int8"),
-           "Unexpected pre-quant mode in npuir_store_fixpipe")
+    assert ((src.dtype == dst.dtype) or (src.dtype == "float32" and dst.dtype == "float16") or
+            (src.dtype == "float32" and dst.dtype == "bfloat16") or
+            (src.dtype == "int32" and dst.dtype == "int8"),
+            "Unexpected pre-quant mode in npuir_store_fixpipe")
 
     src = _to_region(src, "r", _get_extent(src) if size is [] else size)
     dst = _to_region(dst, "w", _get_extent(dst) if size is [] else size)
     pre_relu_map = {"": 0, "relu": 1, "leaky_relu": 2, "prelu": 3}
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_store_fixpipe"), src, dst,
                            enable_nz2nd, channel_split, pre_relu_map[pre_relu_mode])
+
 
 def npuir_brc(src, dst):
     """Broadcast a vector or a scalar according to the broadcast axes array
@@ -343,7 +358,7 @@ def npuir_cast(src, dst, round_mode):
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_cast"), src, dst, round_mode)
 
 
-def npuir_reduce(src, dst, dims:Union[list, tuple], reduce_mode):
+def npuir_reduce(src, dst, dims: Union[list, tuple], reduce_mode):
     """Reduce one or more axes of the source vector according to the reduction axes array, starting from an init value.
 
     Args:
@@ -360,7 +375,10 @@ def npuir_reduce(src, dst, dims:Union[list, tuple], reduce_mode):
     Returns:
         tir.Call: A handle to the npuir_reduce operation
     """
-    valid_reduce_mode = {"sum", "prod", "max", "min", "max_with_index", "min_with_index", "any", "all", "xori", "ori", "none"}
+    valid_reduce_mode = {
+        "sum", "prod", "max", "min", "max_with_index", "min_with_index", "any", "all", "xori",
+        "ori", "none"
+    }
     src_extent = _get_extent(src)
     dst_extent = _get_extent(dst)
     assert len(src_extent) == len(
@@ -372,9 +390,12 @@ def npuir_reduce(src, dst, dims:Union[list, tuple], reduce_mode):
     dst = _to_region(dst, "w", dst_extent)
 
     reduce_dims = ','.join(str(dim) for dim in dims)
-    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_reduce"), src, dst, reduce_dims, reduce_mode)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_reduce"), src, dst, reduce_dims,
+                           reduce_mode)
+
 
 _local = threading.local()
+
 
 def _get_current_stack() -> FrameStack:
     if not hasattr(_local, "resource_specialize_frame_stack"):
@@ -406,10 +427,12 @@ class ResourceSpecializeFrame(TIRFrame):
         return stack.top() if stack else None
 
     def set(self, other, event_id: int = 0):
-        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_set_flag"), self.name, other, event_id)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_set_flag"), self.name, other,
+                               event_id)
 
     def wait(self, other, event_id: int = 0):
-        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_wait_flag"), other, self.name, event_id)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_wait_flag"), other, self.name,
+                               event_id)
 
     def block_barrier(self, id):
         """npuir inter block barrier at tile-level.
@@ -451,6 +474,7 @@ class ResourceSpecializeFrame(TIRFrame):
         """
         return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_sync_block_wait"), self.name, id)
 
+
 def ResourceSpecialize(resource: str):
     return _ffi_api.ResourceSpecialize(resource)
 
@@ -465,20 +489,26 @@ def set_flag(other, event_id: int = 0):
 def wait_flag(other, event_id: int = 0):
     return ResourceSpecializeFrame.Current().wait(other, event_id)
 
+
 def pipe_barrier(pipe):
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_pipe_barrier"), pipe)
+
 
 def block_barrier(id):
     return ResourceSpecializeFrame.Current().block_barrier(id)
 
+
 def subblock_barrier(id):
     return ResourceSpecializeFrame.Current().subblock_barrier(id)
+
 
 def sync_block_set(id):
     return ResourceSpecializeFrame.Current().sync_block_set(id)
 
+
 def sync_block_wait(id):
     return ResourceSpecializeFrame.Current().sync_block_wait(id)
+
 
 @register_object("tl.ScopeFrame")
 class ScopeFrame(TIRFrame):

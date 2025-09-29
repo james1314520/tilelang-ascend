@@ -45,9 +45,8 @@ static std::map<NPU_CORETYPE, std::string> NPU_CORETYPE_str{
     {NPU_CORETYPE::AIV, "aiv"},
     {NPU_CORETYPE::MIX, "mix"}};
 
-static std::map<NPU_CORETYPE, std::string> coretype_syncblock_map {
-    {NPU_CORETYPE::AIC, "CUBE"},
-    {NPU_CORETYPE::AIV, "VECTOR"}};
+static std::map<NPU_CORETYPE, std::string> coretype_syncblock_map{
+    {NPU_CORETYPE::AIC, "CUBE"}, {NPU_CORETYPE::AIV, "VECTOR"}};
 
 static std::map<int, std::string> fixpipe_pre_relu_mode{
     {0, "NO_RELU"}, {1, "NORMAL_RELU"}, {2, "LEAKY_RELU"}, {3, "P_RELU"}};
@@ -290,7 +289,7 @@ void CodeGenTileLangNPUIR::PrintSSAAssign(const std::string &target,
 
 void CodeGenTileLangNPUIR::PrintShape(Array<PrimExpr> shape,
                                       std::string delimiter, std::ostream &os) {
-  for (size_t i = 0; i < shape.size(); i++){
+  for (size_t i = 0; i < shape.size(); i++) {
     if (i != 0)
       os << delimiter;
     os << shape[i];
@@ -668,8 +667,10 @@ String CodeGenTileLangNPUIR::GenSubviewFromRegion(Buffer buffer_data,
 ///   T.ascend_copy(T.region(A[bx, by], 1, 128, 256), T.region(A_VEC[0, 0],
 ///   2, 128, 256))
 /// after:
-///   memref.reinterpret_cast; memref.subview; memref.subview; hivm.hir.store/load
-void CodeGenTileLangNPUIR::AscendCopyCodegen(const CallNode* op, std::ostream& os){
+///   memref.reinterpret_cast; memref.subview; memref.subview;
+///   hivm.hir.store/load
+void CodeGenTileLangNPUIR::AscendCopyCodegen(const CallNode *op,
+                                             std::ostream &os) {
   tvm::tl::AscendCopy npuirop(op->args, this->vmap);
   // gen memref.subview
   String src_data_name = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
@@ -694,17 +695,19 @@ void CodeGenTileLangNPUIR::AscendCopyCodegen(const CallNode* op, std::ostream& o
                  "ub") {
     this->stream << "hivm.hir.copy";
   }
-  this->stream << " ins(" << "\%" << src_data_name << " : "
-               << GetMemrefInfo(src_data_name) << ")";
-  this->stream << " outs(" << "\%" << dst_data_name << " : "
-               << GetMemrefInfo(dst_data_name) << ")";
+  this->stream << " ins("
+               << "\%" << src_data_name << " : " << GetMemrefInfo(src_data_name)
+               << ")";
+  this->stream << " outs("
+               << "\%" << dst_data_name << " : " << GetMemrefInfo(dst_data_name)
+               << ")";
   // TODO: error: custom op 'init_out_buffer' is unknown
   // this->stream << " left_padding_num = %c0 : index init_out_buffer =
   // false";
   this->stream << "\n";
 }
 
-void CodeGenTileLangNPUIR::VexpCodegen(const CallNode* op, std::ostream& os){
+void CodeGenTileLangNPUIR::VexpCodegen(const CallNode *op, std::ostream &os) {
   // Generate hivm.hir.vexp for tl.npuir_exp.
   // before:
   //   T.npuir_exp(T.region(A_VEC[0], 1, 1024), T.region(B_VEC[0], 2, 1024))
@@ -822,7 +825,7 @@ void CodeGenTileLangNPUIR::VreduceCodegen(const CallNode *op,
   this->stream << "\n";
 }
 
-void CodeGenTileLangNPUIR::Nd2NzCodegen(const CallNode* op, std::ostream& os){
+void CodeGenTileLangNPUIR::Nd2NzCodegen(const CallNode *op, std::ostream &os) {
   // Generate hivm.hir.nd2nz for tl.npuir_load_nd2nz.
   tvm::tl::NpuirNd2nz npuirop(op->args, this->vmap);
   // gen memref.subview
@@ -842,7 +845,8 @@ void CodeGenTileLangNPUIR::Nd2NzCodegen(const CallNode* op, std::ostream& os){
   this->stream << "\n";
 }
 
-void CodeGenTileLangNPUIR::FixpipeCodegen(const CallNode* op, std::ostream& os){
+void CodeGenTileLangNPUIR::FixpipeCodegen(const CallNode *op,
+                                          std::ostream &os) {
   // Generate hivm.hir.fixpipe for tl.npuir_store_fixpipe.
   tvm::tl::NpuirFixpipe npuirop(op->args, this->vmap);
   // gen memref.subview
@@ -861,9 +865,11 @@ void CodeGenTileLangNPUIR::FixpipeCodegen(const CallNode* op, std::ostream& os){
   if (src_dtype != dst_dtype) {
     if (src_dtype == DataType::Float(32) && dst_dtype == DataType::Float(16)) {
       pre_quant_attr = "F322F16";
-    } else if (src_dtype == DataType::Float(32) && dst_dtype == DataType::BFloat(16)) {
+    } else if (src_dtype == DataType::Float(32) &&
+               dst_dtype == DataType::BFloat(16)) {
       pre_quant_attr = "F322BF16";
-    } else if (src_dtype == DataType::Int(32) && dst_dtype == DataType::Int(8)) {
+    } else if (src_dtype == DataType::Int(32) &&
+               dst_dtype == DataType::Int(8)) {
       pre_quant_attr = "S322I8";
     } else {
       assert(false && "Unexpected pre-quant mode. Should not reach here.");
@@ -876,7 +882,8 @@ void CodeGenTileLangNPUIR::FixpipeCodegen(const CallNode* op, std::ostream& os){
   this->stream << ", pre_relu = #hivm.fixpipe_pre_relu_mode<"
                << fixpipe_pre_relu_mode[pre_relu_mode] << ">";
   if (pre_quant_attr != "") {
-    this->stream << ", pre_quant = #hivm.fixpipe_pre_quant_mode<" << pre_quant_attr << ">";
+    this->stream << ", pre_quant = #hivm.fixpipe_pre_quant_mode<"
+                 << pre_quant_attr << ">";
   }
   this->stream << "}";
   this->stream << " ins(%" << src_data_name << " : "
@@ -886,8 +893,9 @@ void CodeGenTileLangNPUIR::FixpipeCodegen(const CallNode* op, std::ostream& os){
   this->stream << "\n";
 }
 
-void CodeGenTileLangNPUIR::BarrierCodegen(const CallNode* op, std::ostream& os) {
-  tvm::tl::NpuirPipeBarrier npuirop (op->args, this->vmap);
+void CodeGenTileLangNPUIR::BarrierCodegen(const CallNode *op,
+                                          std::ostream &os) {
+  tvm::tl::NpuirPipeBarrier npuirop(op->args, this->vmap);
   this->PrintIndent();
   this->stream << "hivm.hir.pipe_barrier[<";
   this->stream << npuirop.pipe_type;
@@ -931,7 +939,8 @@ void CodeGenTileLangNPUIR::PipeFlagCodegen(const T &sync_op, std::ostream &os) {
 }
 
 template <typename T>
-void CodeGenTileLangNPUIR::SyncBlockWaitCodegen(const T &sync_op, std::ostream& os) {
+void CodeGenTileLangNPUIR::SyncBlockWaitCodegen(const T &sync_op,
+                                                std::ostream &os) {
   std::string flag_id;
   if (auto *int_imm = sync_op.flag_id.template as<tvm::tir::IntImmNode>()) {
     flag_id = std::to_string(int_imm->value);
@@ -946,7 +955,8 @@ void CodeGenTileLangNPUIR::SyncBlockWaitCodegen(const T &sync_op, std::ostream& 
 }
 
 template <typename T>
-void CodeGenTileLangNPUIR::SyncBlockSetCodegen(const T &sync_op, std::ostream& os){
+void CodeGenTileLangNPUIR::SyncBlockSetCodegen(const T &sync_op,
+                                               std::ostream &os) {
   std::string flag_id;
   if (auto *int_imm = sync_op.flag_id.template as<tvm::tir::IntImmNode>()) {
     flag_id = std::to_string(int_imm->value);
@@ -962,7 +972,7 @@ void CodeGenTileLangNPUIR::SyncBlockSetCodegen(const T &sync_op, std::ostream& o
   this->stream << ">\n";
 }
 
-void CodeGenTileLangNPUIR::DotCodegen(const CallNode* op, std::ostream& os){
+void CodeGenTileLangNPUIR::DotCodegen(const CallNode *op, std::ostream &os) {
   // Generate hivm.hir.mmadL1 for tl.npuir_dot.
   // before:
   //   T.npuir_dot(T.region(A_BUF[0, 0], 1, 128, 1024),
@@ -1023,7 +1033,9 @@ void CodeGenTileLangNPUIR::DotCodegen(const CallNode* op, std::ostream& os){
   this->stream << ")\n";
 }
 
-void CodeGenTileLangNPUIR::BinaryVecOpCodegen(const CallNode* op, std::string opName, std::ostream& os){
+void CodeGenTileLangNPUIR::BinaryVecOpCodegen(const CallNode *op,
+                                              std::string opName,
+                                              std::ostream &os) {
   // Generate hivm.hir.vadd for tl.npuir_add.
   // before:
   //   T.npuir_add(T.region(A_VEC[0], 1, 1024), T.region(B_VEC[0], 1, 1024),
@@ -1036,36 +1048,36 @@ void CodeGenTileLangNPUIR::BinaryVecOpCodegen(const CallNode* op, std::string op
   Array<PrimExpr> buffer_shape0, buffer_shape1;
   auto processImm = [&](std::string &data_name, int arg_id,
                         Array<PrimExpr> &buffer_shape) {
-    if(auto intImm = op->args[arg_id].as<IntImm>()) {
-        auto immObj = intImm.value();
-        data_name = PrintExpr(immObj);
-        const CallNode *region_node = op->args[1 - arg_id].as<CallNode>();
-        const BufferLoadNode *buffer_load_node = 
-            region_node->args[0].as<BufferLoadNode>();
-        if(intImm.value()->dtype != buffer_load_node->buffer->dtype) {
-            data_name = ScalarConvertType(&immObj, buffer_load_node->buffer->dtype);
-        }
-        std::ostringstream temp;
-        PrintType(buffer_load_node->buffer->dtype, temp);
-        this->type_info[data_name] = new Scalar(data_name, temp.str());
+    if (auto intImm = op->args[arg_id].as<IntImm>()) {
+      auto immObj = intImm.value();
+      data_name = PrintExpr(immObj);
+      const CallNode *region_node = op->args[1 - arg_id].as<CallNode>();
+      const BufferLoadNode *buffer_load_node =
+          region_node->args[0].as<BufferLoadNode>();
+      if (intImm.value()->dtype != buffer_load_node->buffer->dtype) {
+        data_name = ScalarConvertType(&immObj, buffer_load_node->buffer->dtype);
+      }
+      std::ostringstream temp;
+      PrintType(buffer_load_node->buffer->dtype, temp);
+      this->type_info[data_name] = new Scalar(data_name, temp.str());
     } else if (auto floatImm = op->args[arg_id].as<FloatImm>()) {
-        auto immObj = floatImm.value();
-        data_name = PrintExpr(immObj);
-        const CallNode *region_node = op->args[1 - arg_id].as<CallNode>();
-        const BufferLoadNode *buffer_load_node = 
-            region_node->args[0].as<BufferLoadNode>();
-        if(floatImm.value()->dtype != buffer_load_node->buffer->dtype) {
-            data_name = ScalarConvertType(&immObj, buffer_load_node->buffer->dtype);
-        }
-        std::ostringstream temp;
-        PrintType(buffer_load_node->buffer->dtype, temp);
-        this->type_info[data_name] = new Scalar(data_name, temp.str());
+      auto immObj = floatImm.value();
+      data_name = PrintExpr(immObj);
+      const CallNode *region_node = op->args[1 - arg_id].as<CallNode>();
+      const BufferLoadNode *buffer_load_node =
+          region_node->args[0].as<BufferLoadNode>();
+      if (floatImm.value()->dtype != buffer_load_node->buffer->dtype) {
+        data_name = ScalarConvertType(&immObj, buffer_load_node->buffer->dtype);
+      }
+      std::ostringstream temp;
+      PrintType(buffer_load_node->buffer->dtype, temp);
+      this->type_info[data_name] = new Scalar(data_name, temp.str());
     } else {
-        const CallNode *region_node = op->args[arg_id].as<CallNode>();
-        buffer_shape = region_node->args[0].as<BufferLoadNode>()->buffer->shape;
-        data_name = GenSubviewFromRegion(region_node);
+      const CallNode *region_node = op->args[arg_id].as<CallNode>();
+      buffer_shape = region_node->args[0].as<BufferLoadNode>()->buffer->shape;
+      data_name = GenSubviewFromRegion(region_node);
     }
-  }; 
+  };
   processImm(left_data_name, 0, buffer_shape0);
   processImm(right_data_name, 1, buffer_shape1);
   const CallNode *out_region_node = op->args[2].as<CallNode>();
@@ -1073,15 +1085,17 @@ void CodeGenTileLangNPUIR::BinaryVecOpCodegen(const CallNode* op, std::string op
   out_data_name = GenSubviewFromRegion(out_region_node);
   this->PrintIndent();
   this->stream << "hivm.hir.v" << opName;
-  this->stream << " ins(" << "\%" << left_data_name << ", " << "\%"
-               << right_data_name;
+  this->stream << " ins("
+               << "\%" << left_data_name << ", "
+               << "\%" << right_data_name;
   this->stream << " : ";
   this->stream << this->type_info[left_data_name]->printType() << ", "
                << this->type_info[right_data_name]->printType() << ")";
-  this->stream << " outs(" << "\%" << out_data_name << " : "
+  this->stream << " outs("
+               << "\%" << out_data_name << " : "
                << this->type_info[out_data_name]->printType() << ")";
   auto dims = broadcastAttrCodegen(buffer_shape0, buffer_shape1);
-  if(dims != ""){
+  if (dims != "") {
     this->stream << " broadcast" << dims;
   }
   this->stream << "\n";
@@ -1090,13 +1104,13 @@ void CodeGenTileLangNPUIR::VisitExpr_(const CallNode *op, std::ostream &os) {
   if (op->op.same_as(Op::Get("tl.npuir_pipe_barrier"))) {
     BarrierCodegen(op, os);
   } else if (op->op.same_as(Op::Get("tl.npuir_set_flag"))) {
-    tvm::tl::NpuirSetFlag sync_op (op->args, this->vmap);
+    tvm::tl::NpuirSetFlag sync_op(op->args, this->vmap);
     PipeFlagCodegen(sync_op, os);
   } else if (op->op.same_as(Op::Get("tl.npuir_wait_flag"))) {
-    tvm::tl::NpuirWaitFlag sync_op (op->args, this->vmap);
+    tvm::tl::NpuirWaitFlag sync_op(op->args, this->vmap);
     PipeFlagCodegen(sync_op, os);
   } else if (op->op.same_as(Op::Get("tl.npuir_sync_block"))) {
-    tvm::tl::NpuirSyncBlock sync_op (op->args, this->vmap);
+    tvm::tl::NpuirSyncBlock sync_op(op->args, this->vmap);
     SyncBlockSetCodegen(sync_op, os);
     SyncBlockWaitCodegen(sync_op, os);
   } else if (op->op.same_as(Op::Get("tl.npuir_sync_block_set"))) {
@@ -1138,16 +1152,16 @@ void CodeGenTileLangNPUIR::VisitExpr_(const CallNode *op, std::ostream &os) {
   }
 }
 void CodeGenTileLangNPUIR::VisitStmt_(const LetStmtNode *op) {
-    std::string value = PrintExpr(op->value);
-    PrintIndent();
-    this->stream << '%' << AllocVarID(op->var.get()) << " = " << value << "\n";
-    PrintStmt(op->body);
+  std::string value = PrintExpr(op->value);
+  PrintIndent();
+  this->stream << '%' << AllocVarID(op->var.get()) << " = " << value << "\n";
+  PrintStmt(op->body);
 }
 
 void CodeGenTileLangNPUIR::VisitStmt_(const AttrStmtNode *op) {
-    if(op->attr_key == "thread_extent") {
-        IterVar iv = Downcast<IterVar>(op->node);
-      if (iv->thread_tag == "blockIdx.x" && iv->var->name_hint != "_") {
+  if (op->attr_key == "thread_extent") {
+    IterVar iv = Downcast<IterVar>(op->node);
+    if (iv->thread_tag == "blockIdx.x" && iv->var->name_hint != "_") {
       this->block_id_ = AllocVarID(iv->var.get());
       this->PrintIndent();
       this->stream << "%" << this->block_id_
@@ -1156,7 +1170,7 @@ void CodeGenTileLangNPUIR::VisitStmt_(const AttrStmtNode *op) {
       this->stream << "%" << this->block_id_ << " = arith.trunci %"
                    << this->block_id_ << "_i64 : i64 to i32\n";
       this->core_num_ = op->value.as<IntImmNode>()->value;
-      } else if (iv->thread_tag == "blockIdx.y" && iv->var->name_hint != "_") {
+    } else if (iv->thread_tag == "blockIdx.y" && iv->var->name_hint != "_") {
       auto vec_id_ = AllocVarID(iv->var.get());
       this->PrintIndent();
       this->stream << "%" << vec_id_
@@ -1164,20 +1178,20 @@ void CodeGenTileLangNPUIR::VisitStmt_(const AttrStmtNode *op) {
       this->PrintIndent();
       this->stream << "%" << vec_id_ << " = arith.trunci %" << vec_id_
                    << "_i64 : i64 to i32\n";
-      }
-      this->VisitStmt(op->body);
-      return;
-    } else if (op->attr_key == "resource_scope") {
-      auto resource_id = Downcast<IntImm>(op->value)->value;
-      auto resource_name = resource_id == 0 ? "AIC" : "AIV";
-
-      if (NPU_CORETYPE_STR[this->current_coretype] == resource_name) {
-      this->VisitStmt(op->body);
-      }
-      // else do nothing but return.
-      return;
     }
-    CodeGenC::VisitStmt_(op);
+    this->VisitStmt(op->body);
+    return;
+  } else if (op->attr_key == "resource_scope") {
+    auto resource_id = Downcast<IntImm>(op->value)->value;
+    auto resource_name = resource_id == 0 ? "AIC" : "AIV";
+
+    if (NPU_CORETYPE_STR[this->current_coretype] == resource_name) {
+      this->VisitStmt(op->body);
+    }
+    // else do nothing but return.
+    return;
+  }
+  CodeGenC::VisitStmt_(op);
 }
 
 /// Generate memref.alloc for TIR AllocateNode like T.decl_buffer.
@@ -1200,13 +1214,13 @@ void CodeGenTileLangNPUIR::VisitStmt_(const AllocateNode *op) {
     this->type_info[vid] =
         new Memref(vid, op->extents, op->dtype, address_space, false);
     this->PrintIndent();
-    stream << "%" << vid << " = " << "memref.alloc() : " << GetMemrefInfo(vid)
-           << "\n";
+    stream << "%" << vid << " = "
+           << "memref.alloc() : " << GetMemrefInfo(vid) << "\n";
   }
   this->VisitStmt(op->body);
 }
 
-void CodeGenTileLangNPUIR::VisitExpr_(const MinNode *op, std::ostream& os) {
+void CodeGenTileLangNPUIR::VisitExpr_(const MinNode *op, std::ostream &os) {
   if (op->dtype.is_int()) {
     PrintBinary(op, "minsi", os, this);
   } else if (op->dtype.is_uint()) {
@@ -1216,7 +1230,7 @@ void CodeGenTileLangNPUIR::VisitExpr_(const MinNode *op, std::ostream& os) {
   }
 }
 
-void CodeGenTileLangNPUIR::VisitExpr_(const MaxNode *op, std::ostream& os) {
+void CodeGenTileLangNPUIR::VisitExpr_(const MaxNode *op, std::ostream &os) {
   if (op->dtype.is_int()) {
     PrintBinary(op, "maxsi", os, this);
   } else if (op->dtype.is_uint()) {
@@ -1226,12 +1240,12 @@ void CodeGenTileLangNPUIR::VisitExpr_(const MaxNode *op, std::ostream& os) {
   }
 }
 
-void CodeGenTileLangNPUIR::VisitExpr_(const AddNode *op, std::ostream& os) {
+void CodeGenTileLangNPUIR::VisitExpr_(const AddNode *op, std::ostream &os) {
   if (op->dtype.is_int() || op->dtype.is_uint()) {
     PrintBinary(op, "addi", os, this);
   } else if (op->dtype.is_float()) {
     PrintBinary(op, "addf", os, this);
-  } 
+  }
 }
 
 void CodeGenTileLangNPUIR::VisitExpr_(const SubNode *op, std::ostream &os) {
@@ -1239,7 +1253,7 @@ void CodeGenTileLangNPUIR::VisitExpr_(const SubNode *op, std::ostream &os) {
     PrintBinary(op, "subi", os, this);
   } else if (op->dtype.is_float()) {
     PrintBinary(op, "subf", os, this);
-  } 
+  }
 }
 
 void CodeGenTileLangNPUIR::VisitExpr_(const FloatImmNode *op,
@@ -1302,7 +1316,7 @@ void CodeGenTileLangNPUIR::VisitExpr_(const SelectNode *op, std::ostream &os) {
 }
 
 void PrintHostFunc(const PrimFunc &f, const std::string &name, std::ostream &os,
-                   int core){
+                   int core) {
   os << "extern \"C\" void call(";
   std::vector<std::string> arg_names;
   for (size_t i = 0; i < f->params.size(); ++i) {
@@ -1350,7 +1364,7 @@ void CodeGenTileLangNPUIR::GenRecastFromArg(Buffer curr_buffer, String arg_name,
 }
 
 void CodeGenTileLangNPUIR::AddFunctionForCoreType(const GlobalVar &gvar,
-                                                const PrimFunc &f) {
+                                                  const PrimFunc &f) {
   // If the function has already been forward-declared, this is a
   // no-op.
   CodeGenC::DeclareFunction(gvar, f);
@@ -1613,4 +1627,3 @@ Memref::Memref(String name, Buffer buffer, bool is_arg_in) {
 } // namespace codegen
 
 } // namespace tvm
-

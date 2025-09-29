@@ -29,7 +29,7 @@ This tutorial shows how to implement a vector addition kernel using TileLang, ta
 ### Installation
 
 ```bash
-pip install pytorch_npu
+pip install torch_npu
 ```
 
 Note: You may need to install additional dependencies specific to your NPU environment.

@@ -33,15 +33,15 @@ public:
   Array<Range> src_range, dst_range;
 };
 
-#define NPUIR_BINARY_OP_CLASS(OPNAME)                                   \
-  class Npuir##OPNAME : public Operator {                               \
-  public:                                                               \
-    Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap);                \
-    static const Op &Get();                                             \
-                                                                        \
-  private:                                                              \
-    Buffer src0, src1, dst;                                             \
-    Array<Range> src0_range, src1_range, dst_range;                     \
+#define NPUIR_BINARY_OP_CLASS(OPNAME)                                          \
+  class Npuir##OPNAME : public Operator {                                      \
+  public:                                                                      \
+    Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap);                       \
+    static const Op &Get();                                                    \
+                                                                               \
+  private:                                                                     \
+    Buffer src0, src1, dst;                                                    \
+    Array<Range> src0_range, src1_range, dst_range;                            \
   };
 
 NPUIR_BINARY_OP_CLASS(Add)
@@ -51,14 +51,14 @@ NPUIR_BINARY_OP_CLASS(Div)
 NPUIR_BINARY_OP_CLASS(Max)
 NPUIR_BINARY_OP_CLASS(Min)
 
-#define NPUIR_UNARY_OP_CLASS(OPNAME)                                    \
-  class Npuir##OPNAME : public Operator {                               \
-  public:                                                               \
-    Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap);                \
-    static const Op &Get();                                             \
-                                                                        \
-    Buffer src, dst;                                                    \
-    Array<Range> src_range, dst_range;                                  \
+#define NPUIR_UNARY_OP_CLASS(OPNAME)                                           \
+  class Npuir##OPNAME : public Operator {                                      \
+  public:                                                                      \
+    Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap);                       \
+    static const Op &Get();                                                    \
+                                                                               \
+    Buffer src, dst;                                                           \
+    Array<Range> src_range, dst_range;                                         \
   };
 
 NPUIR_UNARY_OP_CLASS(Exp)
@@ -130,7 +130,7 @@ public:
 };
 
 /// HIVM set flag sync.
-class NpuirSetFlag: public Operator {
+class NpuirSetFlag : public Operator {
 public:
   NpuirSetFlag(Array<PrimExpr> args, BufferMap vmap);
 
@@ -143,7 +143,7 @@ public:
 };
 
 /// HIVM wait flag sync.
-class NpuirWaitFlag: public Operator {
+class NpuirWaitFlag : public Operator {
 public:
   NpuirWaitFlag(Array<PrimExpr> args, BufferMap vmap);
 
@@ -156,14 +156,14 @@ public:
 };
 /// HIVM cross block sync.
 class NpuirSyncBlock : public Operator {
-  public:
-    NpuirSyncBlock(Array<PrimExpr> args, BufferMap vmap);
+public:
+  NpuirSyncBlock(Array<PrimExpr> args, BufferMap vmap);
 
-    static const Op &Get();
+  static const Op &Get();
 
-    SyncBlockMode mode;
-    std::string pipe_type;
-    PrimExpr flag_id;
+  SyncBlockMode mode;
+  std::string pipe_type;
+  PrimExpr flag_id;
 };
 
 /// HIVM cross block sync.
