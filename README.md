@@ -12,7 +12,7 @@
 Tile Language Ascend (**tilelang-ascend**) is a specialized variant of the tile-lang domain-specific language, specifically optimized for Huawei Ascend NPU (Neural Processing Unit) architecture. Built upon the foundation of tile-lang's Pythonic syntax and [TVM](https://tvm.apache.org/) compiler infrastructure, tilelang-ascend enables developers to efficiently create high-performance AI compute kernels tailored for Ascend processors, including operations like GEMM, vector operations, and attention mechanisms. Tilelang-ascend allows developers to focus on productivity without sacrificing the low-level optimizations necessary for state-of-the-art performance on the NPU. The compiler backend supports two technical routes: [Ascend C & PTO](https://github.com/tile-ai/tilelang-ascend/tree/ascendc_pto) and [NPUIR](https://github.com/tile-ai/tilelang-ascend/tree/npuir).
 
 <p align="center">
-  <img src="./images/tl-ascend-gemm.png" width="100%" alt="示例图片">
+  <img src="./images/tl-ascend-gemm.png" width="100%" alt="image">
 
 </p>
 
@@ -37,7 +37,7 @@ Within the `examples` directory, you will also find additional complex kernels�
 ## Installation
 
 ### Environment Preparation
-We assume you already have an ascend environment with CANN and torch-npu installed. Firstly, set cann environment variables.
+We assume you already have an ascend environment with CANN (at least [8.2.RC1](https://www.hiascend.com/developer/download/community/result?from=firmware&product=1&model=30&cann=8.2.RC1)) and torch-npu (at least 2.6.0.RC1) installed. Firstly, set cann environment variables.
 
   ```bash
   source {your-cann-installed-path}/ascend-toolkit/set_env.sh
