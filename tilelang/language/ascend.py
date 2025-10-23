@@ -425,6 +425,36 @@ def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
     return scalar_op(dst, src0, scalar_value, "Axpy")
 
 
+def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+    size_0 = math.prod(src0.shape)
+    size_2 = math.prod(dst.shape)
+
+    assert size_0 == size_2, "size must be same"
+
+    return T.call_extern("handle", f"AscendC::ShiftLeft", dst.access_ptr("w"),
+                         src0.access_ptr("r"), scalarValue, size_0)
+
+
+def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+    size_0 = math.prod(src0.shape)
+    size_2 = math.prod(dst.shape)
+
+    assert size_0 == size_2, "size must be same"
+
+    return T.call_extern("handle", f"AscendC::ShiftRight", dst.access_ptr("w"),
+                         src0.access_ptr("r"), scalarValue, size_0)
+def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
+    repeatTimes = math.prod(src0.shape) // 32
+    return T.call_extern("handle", f"AscendC::Sort32", dst.access_ptr("w"),
+                         src0.access_ptr("r"), src1.access_ptr("r"), repeatTimes)
+
+
+def createvecindex(dst: Buffer, firstValue: PrimExpr):
+    calCount = math.prod(dst.shape)
+    return T.call_extern("handle", f"AscendC::CreateVecIndex", dst.access_ptr("w"),
+                         firstValue, calCount)
+
+
 def transpose(dst: Buffer, src: Buffer):
     return T.call_extern("handle", "AscendC::Transpose", dst.access_ptr("w"), src.access_ptr("r"))
 
