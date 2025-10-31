@@ -139,8 +139,7 @@ def sparse_attention_mla(
 
                 # Process logical kernels in parallel
                 for task_id in T.serial(T.ceildiv(num_logic_kernels, num_kernels)):
-                    logic_kernel_id = task_id * num_kernels
-                    logic_kernel_id = logic_kernel_id + kernel_id
+                    logic_kernel_id = task_id * num_kernels + kernel_id
                     if logic_kernel_id < num_logic_kernels:
                         batch_id = logic_kernel_id // seq_len
                         seq_id = logic_kernel_id % seq_len
@@ -157,12 +156,8 @@ def sparse_attention_mla(
                                     T.sync_block_wait(0)
 
                                 # Calculate synchronization count for cube operations
-                                stride = T.ceildiv(heads, block_H)
-                                sync_count_cube = task_id * stride
-                                sync_count_cube = sync_count_cube + block_h_id
-                                stride = T.ceildiv(top_k, block_I)
-                                sync_count_cube = sync_count_cube * stride
-                                sync_count_cube = sync_count_cube + block_i_id
+                                sync_count_cube = task_id * T.ceildiv(heads, block_H) + block_h_id
+                                sync_count_cube = sync_count_cube * T.ceildiv(top_k, block_I) + block_i_id
                                 sync_count_cube = sync_count_cube % FFTS_FLAG_THRESHOLD
                                 temp = FFTS_FLAG_THRESHOLD - 1
                                 if sync_count_cube == temp:
