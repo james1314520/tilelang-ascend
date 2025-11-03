@@ -159,7 +159,6 @@ def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tenso
     # k_ptr: (B, N, K)
     # k_s_ptr: (N)
     q_s = q_s_ptr.view(M, H)
-
     k_ptr = k_ptr.transpose(1, 2)
 
     q_reshaped = q_ptr.view(B, M * H, K)
