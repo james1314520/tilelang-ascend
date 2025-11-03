@@ -1,283 +1,214 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import sys
 import os
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import argparse
 
 import torch
-
-import math
-
-torch.npu.set_device(0)
+torch.npu.set_device(15)
 
 import tilelang
 import tilelang.language as T
 from tilelang.jit import compiler_npu
+import torch.nn as nn
 
 tilelang.cache.clear_cache()
 
+
 parser = argparse.ArgumentParser(description="NPU Kernel Compilation")
+parser.add_argument("--b", type=int, default=2, help="Matrix B dimension")
+parser.add_argument("--m", type=int, default=2048, help="Matrix M dimension")
+parser.add_argument("--n", type=int, default=4096, help="Matrix N dimension")
+parser.add_argument("--k", type=int, default=64, help="Matrix K dimension")
+parser.add_argument("--h", type=int, default=32, help="Matrix H dimension")
+parser.add_argument("--bs", type=int, default=64, help="Matrix bs dimension")
+parser.add_argument("--nums_kernel", type=int, default=24, help="number of enabled cores")
+args = parser.parse_args()
 
-parser.add_argument(
-    "--dtype", type=str, default="float16", help="Data type for matrix operations (e.g., float16)")
-parser.add_argument(
-    "--accum_dtype",
-    type=str,
-    default="float32",
-    help="Data type for accumulation and vector operations (higher precision for numerical stability)"
-)
-parser.add_argument("--seq_len", type=int, default=4096, help="Sequence length of input tensors")
-parser.add_argument(
-    "--dim", type=int, default=128, help="Feature dimension size (hidden dimension)")
-parser.add_argument(
-    "--block_m",
-    type=int,
-    default=128,
-    help="Block size for the sequence length dimension in tiling")
-parser.add_argument(
-    "--block_n",
-    type=int,
-    default=128,
-    help="Block size for the key/value sequence length dimension in tiling")
-parser.add_argument(
-    "--block_k", type=int, default=128, help="Block size for the feature dimension in tiling")
+B = args.b
+M = args.m
+N = args.n
+K = args.k
+H = args.h
 
-
-def flashattn(dtype, accum_dtype, seq_len, dim, block_m, block_n, block_k):
-    t = math.ceil(seq_len / block_m / 24)
-    block_m = math.ceil(seq_len / t / 24 / 16) * 16
-    scale = (1.0 / dim)**0.5
-    shape = [seq_len, dim]
-    shape2 = [seq_len, seq_len]
-
-    block_m_half = (block_m + 1) // 2
-    block_share = max(block_n, block_k)
-
-    num_blocks = (seq_len - 1) // block_n + 1
-    shape3 = [seq_len, dim * num_blocks]
-
-
+BLOCK_SIZE_N = args.bs
+nums_kernel = args.nums_kernel
+def fp8_lighting_indexer(B,
+                    H, M, N, K,
+                    BLOCK_SIZE_N,nums_kernel):
+    m_num = M
+    n_num = N // BLOCK_SIZE_N
+    num_logic_kernels = m_num * n_num
+    dtype = "float16"
+    accum_dtype = "float32"
+    FFTS_FLAG_THRESHOLD = 15
 
     @T.prim_func
     def main(
-            Q: T.Tensor(shape, dtype),
-            K: T.Tensor(shape, dtype),
-            V: T.Tensor(shape, dtype),
-            Output: T.Tensor(shape, dtype),
-            workspace_1: T.Tensor(shape2, dtype),
-            workspace_2: T.Tensor(shape2, dtype),
-            workspace_3: T.Tensor(shape3, dtype),
+            q_ptr: T.Tensor((B*M*H, K), dtype),
+            k_ptr: T.Tensor((B*N*1, K), dtype),
+            o_ptr: T.Tensor((B*M, N), dtype),
+            q_s_ptr: T.Tensor((M * H, 1), dtype),
+            k_s_ptr: T.Tensor((1, N), dtype),
+            workspace: T.Tensor((B*M *H, N), dtype),
+            mask: T.Tensor((B*M, N), dtype),
     ):
-        with T.Kernel(T.ceildiv(seq_len, block_m), is_npu=True) as (cid, subid):
-            tail_size_m = T.min(block_m, seq_len - cid * block_m)
 
-            l1_a = T.alloc_L1([block_m, block_share], dtype)
-            l1_b = T.alloc_L1([block_m, block_k], dtype)
-            l0_c = T.alloc_L0C([block_m, block_share], accum_dtype)
-
-            logsum = T.alloc_ub([block_m_half, 1], accum_dtype)
-            scores_max = T.alloc_ub([block_m_half, 1], accum_dtype)
-            scores_max_prev = T.alloc_ub([block_m_half, 1], accum_dtype)
-            scores_scale = T.alloc_ub([block_m_half, 1], accum_dtype)
-            scores_sum = T.alloc_ub([block_m_half, 1], accum_dtype)
-            scales = T.alloc_ub([T.ceildiv(seq_len, block_n)*block_m_half, 1], accum_dtype)
-
-            cross_kernel_f16_dim = T.alloc_ub([block_m_half, dim], dtype)
-            cross_kernel_f16_N = T.alloc_ub([block_m_half, block_n], dtype)
-            cross_kernel_f32_dim = T.alloc_ub([block_m_half, dim], accum_dtype)
-            cross_kernel_f32_N = T.alloc_ub([block_m_half, block_n], accum_dtype)
-            acc_o = T.alloc_ub([block_m_half, dim], accum_dtype)
-            acc_c_scale = scale
+        with T.Kernel(nums_kernel, is_npu=True) as (kernel_id, subid):
 
             with T.Scope("Cube"):
-                for i in T.serial(T.ceildiv(seq_len, block_n)):
-                    tail_size_n = T.min(block_n, seq_len - i * block_n)
-                    for k in T.serial(T.ceildiv(dim, block_k)):
-                        tail_size_k = T.min(block_k, dim - k * block_k)
-                        T.npuir_load_nd2nz(Q[cid * block_m, k * block_k], l1_a,
-                                           [tail_size_m, tail_size_k])
-                        T.npuir_load_nd2nz(K[i * block_n, k * block_k], l1_b,
-                                           [tail_size_n, tail_size_k])
-                        if k == 0:
-                            T.npuir_dot(
-                                l1_a,
-                                l1_b,
-                                l0_c,
-                                initC=True,
-                                b_transpose=True,
-                                size=[tail_size_m, tail_size_k, tail_size_n])
-                        else:
-                            T.npuir_dot(
-                                l1_a,
-                                l1_b,
-                                l0_c,
-                                initC=False,
-                                b_transpose=True,
-                                size=[tail_size_m, tail_size_k, tail_size_n])
+                for task_id in T.serial(T.ceildiv(m_num*n_num, nums_kernel)):
+                    cid = task_id * nums_kernel+ kernel_id
+                    if cid < num_logic_kernels:
+                        mi = cid // n_num
+                        ni = cid % (n_num)
+                        offset_n = ni * BLOCK_SIZE_N
 
-                    with T.rs("PIPE_FIX"):
-                        T.npuir_store_fixpipe(
-                            l0_c,
-                            workspace_1[cid * block_m, i * block_n],
-                            size=[tail_size_m, tail_size_n],
-                            enable_nz2nd=True)
-                        T.sync_block_set(i)
+                        for bi in T.serial(B):
+                            q = T.alloc_L1((H, K), dtype)
+                            k = T.alloc_L1((BLOCK_SIZE_N, K), dtype)
+                            l0_c = T.alloc_L0C((H, BLOCK_SIZE_N), accum_dtype)
 
-                for i in T.serial(T.ceildiv(seq_len, block_n)):
-                    tail_size_n = T.min(block_n, seq_len - i * block_n)
-                    with T.rs("PIPE_MTE2"):
-                        T.sync_block_wait(i)
-                        T.npuir_load_nd2nz(
-                            workspace_2[cid * block_m, i * block_n],
-                            l1_a,
-                            size=[tail_size_m, tail_size_n])
+                            offset = (bi * M + mi) * H
+                            T.npuir_load_nd2nz(q_ptr[offset, 0], q, [H, K])
 
-                    for k in T.serial(T.ceildiv(dim, block_k)):
-                        tail_size_k = T.min(block_k, dim - k * block_k)
-                        by1 = i * dim
-                        by2 = k * block_k
-                        T.npuir_load_nd2nz(V[i * block_n, k * block_k], l1_b,
-                                           [tail_size_n, tail_size_k])
-                        T.npuir_dot(
-                            l1_a,
-                            l1_b,
-                            l0_c,
-                            initC=True,
-                            size=[tail_size_m, tail_size_n, tail_size_k])
-                        T.npuir_store_fixpipe(
-                            l0_c,
-                            workspace_3[cid * block_m, by1 + by2],
-                            size=[tail_size_m, tail_size_k],
-                            enable_nz2nd=True)
+                            offset = bi * N+ offset_n
+                            T.npuir_load_nd2nz(k_ptr[offset, 0], k, [BLOCK_SIZE_N, K])
+                            T.npuir_dot(q, k, l0_c, initC=True, b_transpose=True,size=[H, K, BLOCK_SIZE_N])
 
-                    with T.rs("PIPE_FIX"):
-                        T.sync_block_set(i)
+                            with T.rs("PIPE_FIX"):
+                                offset = (bi * M + mi) * H
+                                T.npuir_store_fixpipe(l0_c, workspace[offset, offset_n],size=[H, BLOCK_SIZE_N], enable_nz2nd=True, pre_relu_mode="relu") #注意o_ptr
+                                T.sync_block_set(0)
+
+                            flag = (task_id * B + bi) % FFTS_FLAG_THRESHOLD
+                            temp = FFTS_FLAG_THRESHOLD - 1
+                            if flag == temp:
+                                with T.rs("PIPE_FIX"):
+                                    T.sync_block_wait(0)
+
 
             with T.Scope("Vector"):
-                value_zero = 0
-                value_min = -T.infinity("float32")
-                T.npuir_brc(value_zero, logsum)
-                T.npuir_brc(value_zero, acc_o)
-                T.npuir_brc(value_zero, scores_scale)
-                T.npuir_brc(value_zero, scales)
-                T.npuir_brc(value_min, scores_max)
+                for task_id in T.serial(T.ceildiv(m_num * n_num, nums_kernel)):
+                    cid = task_id * nums_kernel + kernel_id
+                    if cid < num_logic_kernels:
+                        mi = cid // n_num
+                        ni = cid % (n_num)
+                        offset_n = ni * BLOCK_SIZE_N
 
-                real_m = (tail_size_m + 1) // 2
-                bx = cid * block_m + subid * real_m
-                real_m = real_m - (tail_size_m % 2) * subid
+                        for bi in T.serial(B):
 
-                for i in T.serial(T.ceildiv(seq_len, block_n)):
-                    tail_size_n = T.min(block_n, seq_len - i * block_n)
-                    T.copy(scores_max, scores_max_prev)
-                    with T.rs("PIPE_MTE2"):
-                        T.sync_block_wait(i)
-                        T.copy(
-                            workspace_1[bx, i * block_n],
-                            cross_kernel_f16_N,
-                            size=[real_m, tail_size_n])
-                        T.npuir_cast(cross_kernel_f16_N, cross_kernel_f32_N, round_mode="rint")
+                            q_s = T.alloc_ub((H, 1), dtype)
+                            q_s_32 = T.alloc_ub((H, 1), accum_dtype)
+                            k_s = T.alloc_ub((1, BLOCK_SIZE_N), dtype)
+                            k_s_32 = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
+                            msk = T.alloc_ub((1, BLOCK_SIZE_N), dtype)
+                            msk_32 = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
 
-                    T.npuir_mul(cross_kernel_f32_N, acc_c_scale, cross_kernel_f32_N)
-                    T.npuir_reduce(cross_kernel_f32_N, scores_max, dims=[1], reduce_mode="max")
-                    if i != 0:
-                        T.npuir_max(scores_max_prev, scores_max, scores_max)
-                        T.npuir_sub(scores_max_prev, scores_max, scores_scale)
-                        T.npuir_exp(scores_scale, scores_scale)
-                        T.copy(scores_scale, scales[i * block_m_half, 0], size=[block_m_half, 1])
+                            logits = T.alloc_ub((1, BLOCK_SIZE_N), dtype)
+                            logits_32 = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
+                            o_temp = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
+                            scores_sum = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)  # 0.25K
+                            ub_relu = T.alloc_ub((H, BLOCK_SIZE_N), dtype)
+                            ub_relu_32 = T.alloc_ub((H, BLOCK_SIZE_N), accum_dtype)
+                            temp = T.alloc_ub((H, BLOCK_SIZE_N), accum_dtype)
 
-                    T.npuir_sub(cross_kernel_f32_N, scores_max, cross_kernel_f32_N)
-                    T.npuir_exp(cross_kernel_f32_N, cross_kernel_f32_N)
-                    T.npuir_cast(cross_kernel_f32_N, cross_kernel_f16_N, round_mode="rint")
+                            with T.rs("PIPE_MTE2"):
 
-                    with T.rs("PIPE_MTE3"):
-                        T.copy(
-                            cross_kernel_f16_N,
-                            workspace_2[bx, i * block_n],
-                            size=[real_m, tail_size_n])
-                        T.sync_block_set(i)
+                                T.sync_block_wait(0)
+                                offset = (bi * M + mi) * H
+                                T.copy(workspace[offset, offset_n], ub_relu, size=[H, BLOCK_SIZE_N])
+                                T.npuir_cast(ub_relu, ub_relu_32, round_mode="rint")
 
-                    T.npuir_reduce(cross_kernel_f32_N, scores_sum, dims=[1], reduce_mode="sum")
-                    T.npuir_mul(logsum, scores_scale, logsum)
-                    T.npuir_add(logsum, scores_sum, logsum)
+                                T.copy(q_s_ptr[mi*H, 0], q_s, size=[H, 1])
+                                T.npuir_cast(q_s, q_s_32, round_mode="rint")
 
+                                T.copy(k_s_ptr[0, offset_n], k_s, size=[1, BLOCK_SIZE_N])
+                                T.npuir_cast(k_s, k_s_32, round_mode="rint")
 
-                for i in T.serial(T.ceildiv(seq_len, block_n)):
-                    with T.rs("PIPE_MTE2"):
-                        T.sync_block_wait(i)
-                        T.copy(workspace_3[bx, i * dim], cross_kernel_f16_dim, size=[real_m, dim])
-                    T.npuir_cast(cross_kernel_f16_dim, cross_kernel_f32_dim, round_mode="rint")
-                    if i != 0:
-                        T.copy(scales[i * block_m_half, 0], scores_scale, size=[block_m_half, 1])
-                    T.npuir_mul(acc_o, scores_scale, acc_o)
-                    T.npuir_add(acc_o, cross_kernel_f32_dim, acc_o)
+                                T.npuir_mul(ub_relu_32, q_s_32, temp)
 
-                T.npuir_div(acc_o, logsum, acc_o)
-                T.npuir_cast(acc_o, cross_kernel_f16_dim, round_mode="rint")
-                T.copy(cross_kernel_f16_dim, Output[bx, 0], size=[real_m, dim])
+                                T.npuir_reduce(temp, scores_sum, dims=[0], reduce_mode="sum")
+                                T.npuir_mul(scores_sum, k_s_32, o_temp)
+
+                            flag = (task_id * B + bi) % FFTS_FLAG_THRESHOLD
+                            temp = FFTS_FLAG_THRESHOLD - 1
+                            if flag == temp:
+                                with T.rs("PIPE_MTE2"):
+                                    T.sync_block_set(0)
+
+                            offset = bi * M + mi
+                            T.copy(mask[offset, offset_n], msk, size=[1, BLOCK_SIZE_N])
+
+                            T.npuir_cast(msk, msk_32, round_mode="rint")
+                            T.npuir_add(msk_32, o_temp, logits_32)
+
+                            T.npuir_cast(logits_32, logits, round_mode="rint")
+                            T.copy(logits, o_ptr[offset, offset_n], size=[1, BLOCK_SIZE_N])
+
 
     return main
 
 
-def generate_tensor(shape, dtype, clear=False):
-    """generate tensor"""
-    if clear:
-        return torch.zeros(shape, dtype=eval("torch." + dtype))
-    if dtype in ("float32", "float16", "bfloat16"):
-        return torch.randn(size=shape, dtype=eval("torch." + dtype))
-    if dtype in ("int32", "int64", "int16"):
-        return torch.randint(low=0, high=2000, size=shape, dtype=eval("torch." + dtype))
-    if dtype == "int8":
-        return torch.randint(low=0, high=127, size=shape, dtype=eval("torch." + dtype))
-    if dtype == "bool":
-        return torch.randint(low=0, high=2, size=shape).bool()
-    raise ValueError('Invalid parameter "dtype" is found : {}'.format(dtype))
+def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tensor, k_s_ptr: torch.Tensor, mask: torch.Tensor):
+
+    # q_ptr: (B, M, H, K)
+    # q_s_ptr: (M*H)
+    # k_ptr: (B, N, K)
+    # k_s_ptr: (N)
+    q_s = q_s_ptr.view(M, H)
+
+    # 转置
+    k_ptr = k_ptr.transpose(1, 2)
+
+    q_reshaped = q_ptr.view(B, M * H, K)
+    q_reshaped.to(dtype=torch.float16)
+
+    temp = torch.matmul(q_reshaped, k_ptr)  # (B, M * H, N)
+
+    temp = temp.view(B, M, H, N)
+    temp_relu = torch.relu(temp)
+    temp_relu = temp_relu.to(dtype=torch.float32)
+
+    temp_temp = temp_relu * q_s[None, :, :, None]  # q_s维度扩展为(1, M, H, 1)
+
+    o_temp = torch.sum(temp_temp, dim=2)  # (B, M, N)
+    o_temp_temp = o_temp * k_s_ptr[None, None, :]# k_s_ptr 维度扩展为 (1, 1, N)
+
+    o_temp_temp += mask
+    o_temp_temp = o_temp_temp.to(dtype=torch.float16)
+    return o_temp_temp
 
 
-def run_test(main_args):
-    func = flashattn(
-        main_args.dtype,
-        main_args.accum_dtype,
-        main_args.seq_len,
-        main_args.dim,
-        main_args.block_m,
-        main_args.block_n,
-        main_args.block_k,
-    )
 
+if __name__ == '__main__':
+    func = fp8_lighting_indexer(args.b, args.h, args.m, args.n, args.k, args.bs, args.nums_kernel)
     compiled_kernel = tilelang.compile(func, target='npuir')
 
-    num_blocks = (main_args.seq_len - 1) // main_args.block_n + 1
-    shape = [main_args.seq_len, main_args.dim]
-    shape2 = [main_args.seq_len, main_args.seq_len]
-    shape3 = [main_args.seq_len, main_args.dim * num_blocks]
+    torch.manual_seed(0)
 
-    torch.manual_seed(88888888)  # set the random seed for torch
+    B = 2
+    M = 2048
+    H = 32
+    K = 64
+    N = 4096 #
+    BLOCK_SIZE_N = 64
+    q = torch.randn((B*M * H, K), dtype=torch.float16)
+    k = torch.randn((B*N, K), dtype=torch.float16)
+    o = torch.zeros((B*M, N), dtype=torch.float16).npu()
+    q_s = torch.randn((M * H, 1), dtype=torch.float16)
+    k_s = torch.randn((1, N), dtype=torch.float16)
+    workspace = torch.zeros((B* M *H, N), dtype=torch.float16).npu()
 
-    q = generate_tensor(shape, main_args.dtype).npu()
-    k = generate_tensor(shape, main_args.dtype).npu()
-    v = generate_tensor(shape, main_args.dtype).npu()
-    o = generate_tensor(shape, main_args.dtype, clear=True).npu()
-    w1 = generate_tensor(shape2, main_args.dtype, clear=True).npu()
-    w2 = generate_tensor(shape2, main_args.dtype, clear=True).npu()
-    w3 = generate_tensor(shape3, main_args.dtype, clear=True).npu()
+    mask = torch.full((M, N), float("-inf")).triu_(1).to(dtype=torch.float16) if M > 1 else None
+    mask = torch.stack([mask for _ in range(B)], dim=0) #(B, M, N)
 
-    scale = (1.0 / main_args.dim)**0.5
-    # ref_output = torch.nn.functional.softmax(
-    #     (q @ k.T).to(torch.float32) * scale, dim=-1).to(torch.float16) @ v
+    compiled_kernel(q.npu(), k.npu(), o, q_s.npu(), k_s.npu(), workspace, mask.reshape(B * M, N).npu())
+    print(o.cpu().reshape(B, M, N))
 
-    compiled_kernel(q, k, v, o, w1, w2, w3)
-    # torch.set_printoptions(sci_mode=False)
-    # print("Actual Result:")
-    # print(o)
-    # print("Expected Result:")
-    # print(ref_output)
-    # torch.testing.assert_close(o, ref_output, rtol=1e-2, atol=1e-2)
-    # print("\033[92mAll check passed!\033[0m")
+    o_torch = ref_fp8_index(q.reshape(B, M, H, K), q_s.reshape(M * H), k.reshape(B, N, K), k_s.reshape(N), mask)
+    print("torch:", o_torch.cpu())
 
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-
-    run_test(args)
+    torch.testing.assert_close(o.cpu().reshape(B, M, N), o_torch, rtol=1e-2, atol=1e-2)
