@@ -163,9 +163,7 @@ def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tenso
 
     q_reshaped = q_ptr.view(B, M * H, K)
     q_reshaped.to(dtype=torch.float16)
-
     temp = torch.matmul(q_reshaped, k_ptr)  # (B, M * H, N)
-
     temp = temp.view(B, M, H, N)
     temp_relu = torch.relu(temp)
     temp_relu = temp_relu.to(dtype=torch.float32)
