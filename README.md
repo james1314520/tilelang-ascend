@@ -17,6 +17,8 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 
 ## Latest News
+- 21/11/2025 🚀: Support integrated compilation of open source AscendNPU-IR together with TileLang, easing the compilation experience!
+
 - 29/09/2025 🚀: Officially establish the NPU Intermediate Representation (AscendNPU IR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
 
 ## Tested Devices
@@ -29,7 +31,7 @@ Although TileLang aims to support portability across a variety of devices, it ha
 - [Vector Add](./examples/vec_add_1d.py)
 - [Flash Attention](./examples/flash_attn_npuir.py)
 
-Within the `npu_examples` directory, you will also find additional complex kernels—such as convolutions, forward/backward passes for FlashAttention, more operators will continuously be added.
+Within the `examples` directory, you will also find additional complex kernels—such as convolutions, forward/backward passes for FlashAttention, more operators will continuously be added.
 
 
 ## Installation
