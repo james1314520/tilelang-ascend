@@ -29,7 +29,7 @@ Although TileLang aims to support portability across a variety of devices, it ha
 - [Vector Add](./examples/vec_add_1d.py)
 - [Flash Attention](./examples/flash_attn_npuir.py)
 
-Within the `examples` directory, you will also find additional complex kernels—such as convolutions, forward/backward passes for FlashAttention, more operators will continuously be added.
+Within the `npu_examples` directory, you will also find additional complex kernels—such as convolutions, forward/backward passes for FlashAttention, more operators will continuously be added.
 
 
 ## Installation
@@ -59,15 +59,10 @@ Prepare a Python environment with Python version between 3.7.*x* and 3.11.4 (inc
    pip3 install attrs cython 'numpy>=1.19.2,<=1.24.0' decorator sympy cffi pyyaml pathlib2 psutil protobuf==3.20.0 scipy requests absl-py
    ```
 
-<!-- 部署Bisheng编译器: -->
-Deploy the Bisheng compiler:
 
 
-   ```shell
-   export BISHENG_INSTALL_PATH=/path/to/bishengir-compile
-   ```
-   <!-- 补充环境变量设置 -->
-   Set Environment Variables
+<!-- 补充环境变量设置 -->
+Set Environment Variables
 
 ```shell
 export ACL_OP_INIT_MODE=1
@@ -94,8 +89,10 @@ Run the installation script
 
 ```shell
 cd tilelang-ascend
-chmod +x ./install_npuir.sh
-./install_npuir.sh
+# build AscendNPU-IR in 3rdparty
+bash install_npuir.sh
+# Alternative way of building with local AscendNPU-IR
+bash install_npuir.sh --bishengir-path=/path/to/bishengir-compile
 ```
 
 Install torch_npu

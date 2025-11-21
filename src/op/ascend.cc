@@ -36,113 +36,6 @@ AscendCopy::AscendCopy(Array<PrimExpr> args, BufferMap vmap) : args_(args) {
   std::tie(this->src_range, this->dst_range) = std::tie(rgs[0], rgs[1]);
 }
 
-Stmt AscendCopy::Lower(const LowerArgs &T, arith::Analyzer *analyzer) const {
-  auto get_dtype = [](const Buffer &buf) -> std::string {
-    auto dtype = buf->dtype;
-    if (dtype.is_float16()) {
-      return "half";
-    } else if (dtype.is_float() && dtype.bits() == 32) {
-      return "float";
-    }
-    LOG(FATAL) << "Unsupported data type: " << dtype;
-    return "";
-  };
-
-  std::stringstream ss;
-  ss << "tl::ascend::";
-  bool flag = false;
-  bool print_dst_layout = false;
-  bool print_src_layout = false;
-  bool print_gm_layout = false;
-  if (src.scope() == "global" && dst.scope() == "shared.dyn") {
-    ss << "copy_gm_to_l1";
-    print_dst_layout = true;
-    print_gm_layout = true;
-  } else if (src.scope() == "shared.dyn" && dst.scope() == "wmma.matrix_a") {
-    ss << "copy_l1_to_l0a";
-    print_src_layout = true;
-  } else if (src.scope() == "shared.dyn" && dst.scope() == "wmma.matrix_b") {
-    ss << "copy_l1_to_l0b";
-    print_src_layout = true;
-  } else if (src.scope() == "wmma.accumulator" && dst.scope() == "global") {
-    ss << "copy_l0c_to_gm";
-    flag = true;
-    print_gm_layout = true;
-  } else if (src.scope() == "global" && dst.scope() == "shared") {
-    ss << "copy_gm_to_ub";
-  } else if (src.scope() == "shared" && dst.scope() == "global") {
-    ss << "copy_ub_to_gm";
-  } else {
-    LOG(FATAL) << "Unsupported scope: src = " << src.scope()
-               << ", dst = " << dst.scope();
-  }
-
-  ss << "<" << get_dtype(src) << ", ";
-
-  if (flag) {
-    ss << get_dtype(dst) << ", ";
-  }
-  if (print_gm_layout) {
-    if (T.layout_map.count(src))
-      ss << T.layout_map[src]->AscendLayoutStr() << ", ";
-    else
-      ss << "layout::RowMajor, ";
-  }
-
-  if (print_src_layout) {
-    ICHECK(T.layout_map.count(src))
-        << "Layout map does not contain source buffer: " << src->name;
-    ss << T.layout_map[src]->AscendLayoutStr() << ", ";
-  } else if (print_dst_layout) {
-    ICHECK(T.layout_map.count(dst))
-        << "Layout map does not contain destination buffer: " << dst->name;
-    ss << T.layout_map[dst]->AscendLayoutStr() << ", ";
-  }
-  int src_ndim = src->shape.size(), dst_ndim = dst->shape.size();
-  ss << src->shape[src_ndim - 2] << ", " << src->shape[src_ndim - 1] << ", "
-     << dst->shape[dst_ndim - 2] << ", " << dst->shape[dst_ndim - 1] << ">";
-
-  Array<PrimExpr> src_indices, dst_indices;
-
-  for (size_t i = 0; i < src_range.size(); i++) {
-    src_indices.push_back(src_range[i]->min);
-  }
-
-  for (size_t i = 0; i < dst_range.size(); i++) {
-    dst_indices.push_back(dst_range[i]->min);
-  }
-
-  auto src_new_indices = T.layout_map.count(src)
-                             ? T.layout_map[src]->Forward(src_indices)
-                             : src_indices;
-  auto dst_new_indices = T.layout_map.count(dst)
-                             ? T.layout_map[dst]->Forward(dst_indices)
-                             : dst_indices;
-
-  auto src_new_buffer = T.buffer_remap.count(src) ? T.buffer_remap[src] : src;
-  auto dst_new_buffer = T.buffer_remap.count(dst) ? T.buffer_remap[dst] : dst;
-  auto src_ptr = src_new_buffer.access_ptr(
-      1, DataType::Handle(), 1,
-      src_new_buffer.OffsetOf(src_new_indices).back());
-  auto dst_ptr = dst_new_buffer.access_ptr(
-      2, DataType::Handle(), 1,
-      dst_new_buffer.OffsetOf(dst_new_indices).back());
-  Array<PrimExpr> new_args;
-  new_args.push_back(StringImm(ss.str()));
-
-  new_args.push_back(src_ptr);
-  new_args.push_back(dst_ptr);
-
-  auto new_call = Call(DataType::Handle(), builtin::call_extern(), new_args);
-  return Evaluate(new_call);
-}
-
-LayoutMap AscendCopy::InferLayout(const LayoutInferArgs &T, InferLevel level) {
-  LayoutMap results;
-  // TODO: add logic to infer layout for AscendCopy
-  return results;
-}
-
 #define NPUIR_BINARY_OP_CTOR(OPNAME, opname)                                   \
   Npuir##OPNAME::Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap) {         \
     Array<Range> rgs[3];                                                       \
@@ -155,8 +48,7 @@ LayoutMap AscendCopy::InferLayout(const LayoutInferArgs &T, InferLevel level) {
       rgs[i] = region.GetRanges();                                             \
       bf[i] = region.GetBuffer();                                              \
     }                                                                          \
-    std::tie(this->src0, this->src1, this->dst) =                              \
-        std::tie(bf[0], bf[1], bf[2]);                                         \
+    std::tie(this->src0, this->src1, this->dst) = std::tie(bf[0], bf[1], bf[2]);\
     std::tie(this->src0_range, this->src1_range, this->dst_range) =            \
         std::tie(rgs[0], rgs[1], rgs[2]);                                      \
   }                                                                            \
@@ -171,6 +63,11 @@ NPUIR_BINARY_OP_CTOR(Mul, mul)
 NPUIR_BINARY_OP_CTOR(Div, div)
 NPUIR_BINARY_OP_CTOR(Max, max)
 NPUIR_BINARY_OP_CTOR(Min, min)
+NPUIR_BINARY_OP_CTOR(Or, or)
+NPUIR_BINARY_OP_CTOR(And, and)
+NPUIR_BINARY_OP_CTOR(Xor, xor)
+NPUIR_BINARY_OP_CTOR(Pow, pow)
+NPUIR_BINARY_OP_CTOR(Shl, shl)
 
 #define NPUIR_UNARY_OP_CTOR(OPNAME, opname)                                    \
   Npuir##OPNAME::Npuir##OPNAME(Array<PrimExpr> args, BufferMap vmap) {         \
@@ -196,6 +93,11 @@ NPUIR_BINARY_OP_CTOR(Min, min)
 NPUIR_UNARY_OP_CTOR(Exp, exp)
 NPUIR_UNARY_OP_CTOR(Ln, ln)
 NPUIR_UNARY_OP_CTOR(Relu, relu)
+NPUIR_UNARY_OP_CTOR(Sqrt, sqrt)
+NPUIR_UNARY_OP_CTOR(Rsqrt, rsqrt)
+NPUIR_UNARY_OP_CTOR(Abs, abs)
+NPUIR_UNARY_OP_CTOR(Rec, rec)
+NPUIR_UNARY_OP_CTOR(Not, not )
 
 NpuirBrc::NpuirBrc(Array<PrimExpr> args, BufferMap vmap) {
   in = args[0], out = args[1];
@@ -322,6 +224,7 @@ NpuirCast::NpuirCast(Array<PrimExpr> args, BufferMap vmap) {
   }
   std::tie(this->src, this->dst) = std::tie(bf[0], bf[1]);
   std::tie(this->src_range, this->dst_range) = std::tie(rgs[0], rgs[1]);
+
   round_mode = args[2].as<StringImmNode>()->value;
 }
 
@@ -383,10 +286,131 @@ NpuirCmp::NpuirCmp(Array<PrimExpr> args, BufferMap vmap) {
   cmp_mod = args[3].as<StringImm>().value()->value;
 }
 
+NpuirShr::NpuirShr(Array<PrimExpr> args, BufferMap vmap) {
+  Array<Range> rgs[4];
+  Buffer bf[4];
+  for (int i = 0; i < 3; i++) {
+    auto expr = args[i];
+    auto call = expr.as<CallNode>();
+    ICHECK(call);
+    auto region = RegionOp(call->args, vmap);
+    rgs[i] = region.GetRanges();
+    bf[i] = region.GetBuffer();
+  }
+  std::tie(this->src0, this->src1, this->dst) = std::tie(bf[0], bf[1], bf[2]);
+  std::tie(this->src0_range, this->src1_range, this->dst_range) =
+      std::tie(rgs[0], rgs[1], rgs[2]);
+  round = args[3].as<Bool>().value();
+}
+
+NpuirDevicePrintVar::NpuirDevicePrintVar(Array<PrimExpr> args, BufferMap vmap) {
+  src = args[0];
+  prefix = args[1].as<StringImmNode>()->value;
+  hex = args[2].as<Bool>().value();
+}
+
+NpuirDevicePrintBuf::NpuirDevicePrintBuf(Array<PrimExpr> args, BufferMap vmap) {
+  Array<Range> rg;
+  Buffer bf;
+  auto expr = args[0];
+  auto call = expr.as<CallNode>();
+  ICHECK(call);
+  auto region = RegionOp(call->args, vmap);
+  rg = region.GetRanges();
+  bf = region.GetBuffer();
+  this->src = bf;
+  this->src_range = rg;
+
+  prefix = args[1].as<StringImmNode>()->value;
+  hex = args[2].as<Bool>().value();
+}
+
+#define NPUIR_GEN_BUF(arg)                                                     \
+  Array<Range> rg;                                                             \
+  Buffer bf;                                                                   \
+  auto expr = arg;                                                             \
+  auto call = expr.as<CallNode>();                                             \
+  ICHECK(call);                                                                \
+  auto region = RegionOp(call->args, vmap);                                    \
+  rg = region.GetRanges();                                                     \
+  bf = region.GetBuffer();
+
+#define NPUIR_SRC_DST_BUF                                                      \
+  Array<Range> rgs[2];                                                         \
+  Buffer bf[2];                                                                \
+  for (int i = 0; i < 2; i++) {                                                \
+    auto expr = args[i];                                                       \
+    auto call = expr.as<CallNode>();                                           \
+    ICHECK(call);                                                              \
+    auto region = RegionOp(call->args, vmap);                                  \
+    rgs[i] = region.GetRanges();                                               \
+    bf[i] = region.GetBuffer();                                                \
+  }                                                                            \
+  std::tie(this->src, this->dst) = std::tie(bf[0], bf[1]);                     \
+  std::tie(this->src_range, this->dst_range) = std::tie(rgs[0], rgs[1]);
+
+#define NPUIR_LIST_PARAM(list_param, arg_pos)                                  \
+  std::string str_##list_param = args[arg_pos].as<StringImmNode>()->value;     \
+  std::stringstream ss(str_##list_param);                                      \
+  std::string num;                                                             \
+  while (std::getline(ss, num, ',')) {                                         \
+    list_param.push_back(std::stoi(num));                                      \
+  }
+
+NpuirGather::NpuirGather(Array<PrimExpr> args, BufferMap vmap) {
+  NPUIR_SRC_DST_BUF
+
+  Array<Range> range;
+  Buffer buffer;
+  auto expr = args[2];
+  auto call = expr.as<CallNode>();
+  ICHECK(call);
+  auto region = RegionOp(call->args, vmap);
+  range = region.GetRanges();
+  buffer = region.GetBuffer();
+  this->indices = buffer;
+  this->indices_range = range;
+}
+
+NpuirTranspose::NpuirTranspose(Array<PrimExpr> args, BufferMap vmap){
+    NPUIR_SRC_DST_BUF NPUIR_LIST_PARAM(permutation, 2)}
+
+NpuirInterleave::NpuirInterleave(Array<PrimExpr> args, BufferMap vmap) {
+  this->channel_nums = args[0].as<IntImm>().value()->value;
+
+  NPUIR_GEN_BUF(args[1])
+  this->dst = bf;
+  this->dst_range = rg;
+
+  size_t n_srcs = args.size() - 2;
+  for (size_t i = 0; i < n_srcs; i++) {
+    NPUIR_GEN_BUF(args[2 + i])
+    this->srcs.push_back(bf);
+    this->srcs_range.push_back(rg);
+  }
+}
+
+NpuirDeinterleave::NpuirDeinterleave(Array<PrimExpr> args, BufferMap vmap) {
+  this->channel_nums = args[0].as<IntImm>().value()->value;
+  this->index_mode = args[1].as<StringImmNode>()->value;
+
+  NPUIR_GEN_BUF(args[2])
+  this->src = bf;
+  this->src_range = rg;
+
+  size_t n_dsts = args.size() - 3;
+  for (size_t i = 0; i < n_dsts; i++) {
+    NPUIR_GEN_BUF(args[3 + i])
+    this->dsts.push_back(bf);
+    this->dsts_range.push_back(rg);
+  }
+}
+
 TIR_REGISTER_TL_OP(AscendCopy, ascend_copy)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
+
 TIR_REGISTER_TL_OP(NpuirDot, npuir_dot)
     .set_num_inputs(6)
     .set_attr<TCallEffectKind>("TCallEffectKind",
@@ -449,6 +473,41 @@ TIR_REGISTER_TL_OP(NpuirSelect, npuir_select)
 
 TIR_REGISTER_TL_OP(NpuirCmp, npuir_cmp)
     .set_num_inputs(4)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirShr, npuir_shr)
+    .set_num_inputs(4)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirDevicePrintVar, npuir_debug_print_var)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirDevicePrintBuf, npuir_debug_print_buffer_value)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirGather, npuir_gather)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirTranspose, npuir_transpose)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirInterleave, npuir_interleave)
+    .set_num_inputs(-1)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirDeinterleave, npuir_deinterleave)
+    .set_num_inputs(-1)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
 

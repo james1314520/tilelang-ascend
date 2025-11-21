@@ -1,3 +1,11 @@
+ascend/backend/triton-adapter-opt
+__pycache__/
+kernel_meta/
+.vscode/
+.cache/
+fusion_result.json
+compile_commands.json
+
 # Compiled Object files
 *.slo
 *.lo
@@ -68,6 +76,7 @@ models/frozenmodels/
 
 # .pytest_cache
 .pytest_cache
+npu_example/output/*
 
 # .hypothesis
 .hypothesis

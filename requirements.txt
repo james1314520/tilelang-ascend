@@ -6,6 +6,4 @@ typing_extensions>=4.10.0
 cloudpickle
 ml_dtypes
 psutil
-pybind11
 torch
-torch_npu
