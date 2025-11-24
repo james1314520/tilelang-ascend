@@ -159,15 +159,12 @@ def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tenso
     # k_ptr: (B, N, K)
     # k_s_ptr: (N)
     q_s = q_s_ptr.view(M, H)
-
-    # 转置
+    
     k_ptr = k_ptr.transpose(1, 2)
 
     q_reshaped = q_ptr.view(B, M * H, K)
     q_reshaped.to(dtype=torch.float16)
-
     temp = torch.matmul(q_reshaped, k_ptr)  # (B, M * H, N)
-
     temp = temp.view(B, M, H, N)
     temp_relu = torch.relu(temp)
     temp_relu = temp_relu.to(dtype=torch.float32)
@@ -186,7 +183,6 @@ def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tenso
 if __name__ == '__main__':
     func = fp8_lighting_indexer(args.b, args.h, args.m, args.n, args.k, args.bs, args.nums_kernel)
     compiled_kernel = tilelang.compile(func, target='npuir')
-
     torch.manual_seed(0)
 
     B = 2
