@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import torch
 
 torch.npu.set_device(0)

@@ -1,5 +1,4 @@
-# Copyright (c) Tile-AI Corporation.
-# Licensed under the MIT License.
+# Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

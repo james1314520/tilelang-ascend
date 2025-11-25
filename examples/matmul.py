@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import tilelang
 import tilelang.language as T
 import torch
