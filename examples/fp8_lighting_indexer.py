@@ -76,7 +76,7 @@ def fp8_lighting_indexer(B,
 
                             with T.rs("PIPE_FIX"):
                                 offset = (bi * M + mi) * H
-                                T.npuir_store_fixpipe(l0_c, workspace[offset, offset_n],size=[H, BLOCK_SIZE_N], enable_nz2nd=True, pre_relu_mode="relu") #注意o_ptr
+                                T.npuir_store_fixpipe(l0_c, workspace[offset, offset_n],size=[H, BLOCK_SIZE_N], enable_nz2nd=True, pre_relu_mode="relu") 
                                 T.sync_block_set(0)
 
                             flag = (task_id * B + bi) % FFTS_FLAG_THRESHOLD
@@ -106,7 +106,7 @@ def fp8_lighting_indexer(B,
                             logits = T.alloc_ub((1, BLOCK_SIZE_N), dtype)
                             logits_32 = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
                             o_temp = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)
-                            scores_sum = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)  # 0.25K
+                            scores_sum = T.alloc_ub((1, BLOCK_SIZE_N), accum_dtype)  
                             ub_relu = T.alloc_ub((H, BLOCK_SIZE_N), dtype)
                             ub_relu_32 = T.alloc_ub((H, BLOCK_SIZE_N), accum_dtype)
                             temp = T.alloc_ub((H, BLOCK_SIZE_N), accum_dtype)
@@ -165,10 +165,10 @@ def ref_fp8_index(q_ptr: torch.Tensor, q_s_ptr: torch.Tensor, k_ptr: torch.Tenso
     temp_relu = torch.relu(temp)
     temp_relu = temp_relu.to(dtype=torch.float32)
 
-    temp_temp = temp_relu * q_s[None, :, :, None]  # q_s维度扩展为(1, M, H, 1)
+    temp_temp = temp_relu * q_s[None, :, :, None] # q_s维度扩展为(1, M, H, 1)
 
-    o_temp = torch.sum(temp_temp, dim=2)  # (B, M, N)
-    o_temp_temp = o_temp * k_s_ptr[None, None, :]# k_s_ptr 维度扩展为 (1, 1, N)
+    o_temp = torch.sum(temp_temp, dim=2) # (B, M, N)
+    o_temp_temp = o_temp * k_s_ptr[None, None, :] # k_s_ptr 维度扩展为 (1, 1, N)
 
     o_temp_temp += mask
     o_temp_temp = o_temp_temp.to(dtype=torch.float16)
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     M = 2048
     H = 32
     K = 64
-    N = 4096 #
+    N = 4096 
     BLOCK_SIZE_N = 64
     q = torch.randn((B*M * H, K), dtype=torch.float16)
     k = torch.randn((B*N, K), dtype=torch.float16)
