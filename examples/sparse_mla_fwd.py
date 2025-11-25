@@ -1,10 +1,12 @@
-import torch
-torch.npu.set_device(0)
+# Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import argparse
+import torch
 
 import tilelang
 from tilelang import language as T
 from tilelang import tvm
+
+torch.npu.set_device(0)
 
 # Clear tilelang cache
 tilelang.cache.clear_cache()
@@ -12,14 +14,14 @@ tilelang.cache.clear_cache()
 # Argument parser for kernel configuration parameters
 parser = argparse.ArgumentParser(description="NPU Kernel Compilation")
 parser.add_argument("--batch_size", type=int, default=1, help="")
-parser.add_argument("--seq_len", type=int, default=4096, help="")
-parser.add_argument("--seq_len_kv", type=int, default=4096, help="")
-parser.add_argument("--heads", type=int, default=128, help="")
+parser.add_argument("--seq_len", type=int, default=128, help="")
+parser.add_argument("--seq_len_kv", type=int, default=128, help="")
+parser.add_argument("--heads", type=int, default=32, help="")
 parser.add_argument("--dim", type=int, default=512, help="")
 parser.add_argument("--tail_dim", type=int, default=64, help="")
-parser.add_argument("--top_k", type=int, default=2048, help="")
-parser.add_argument("--block_i", type=int, default=64, help="")
-parser.add_argument("--block_k", type=int, default=64, help="")
+parser.add_argument("--top_k", type=int, default=64, help="")
+parser.add_argument("--block_i", type=int, default=32, help="")
+parser.add_argument("--block_k", type=int, default=32, help="")
 parser.add_argument("--kv_group", type=int, default=1, help="")
 parser.add_argument("--num_kernels", type=int, default=24, help="")
 parser.add_argument("--sm_scale", type=float, help="")
@@ -52,15 +54,12 @@ def sparse_attention_mla(
     assert (
             top_k % block_I == 0
     ), "otherwise will load some index=0 thus causing wrong kv to be loaded"
-    
+
     # Set softmax scale if not provided
     if sm_scale is None:
         sm_scale = (1.0 / (dim + tail_dim)) ** 0.5
     else:
         sm_scale = sm_scale
-
-    # Fast thread synchronization threshold
-    FFTS_FLAG_THRESHOLD = 15
 
     # Calculate number of logical kernels
     num_logic_kernels = batch * seq_len
@@ -97,7 +96,7 @@ def sparse_attention_mla(
 
     # Calculate full dimension (query + tail)
     full_dim = dim + tail_dim
-    
+
     # Define tensor shapes
     shape_q = [batch * seq_len * heads, full_dim]
     shape_kv = [batch * seq_len_kv * kv_group, full_dim]
@@ -127,7 +126,7 @@ def sparse_attention_mla(
         # Kernel definition with NPU support
         with T.Kernel(num_kernels, is_npu=True) as (kernel_id, subid):
             acc_s_scale = sm_scale
-            
+
             # Cube computation scope for matrix operations
             with T.Scope("Cube"):
                 # Local memory allocations for cube operations
@@ -139,8 +138,7 @@ def sparse_attention_mla(
 
                 # Process logical kernels in parallel
                 for task_id in T.serial(T.ceildiv(num_logic_kernels, num_kernels)):
-                    logic_kernel_id = task_id * num_kernels
-                    logic_kernel_id = logic_kernel_id + kernel_id
+                    logic_kernel_id = task_id * num_kernels + kernel_id
                     if logic_kernel_id < num_logic_kernels:
                         batch_id = logic_kernel_id // seq_len
                         seq_id = logic_kernel_id % seq_len
@@ -152,41 +150,22 @@ def sparse_attention_mla(
                             # Process top-k blocks
                             for block_i_id in T.serial(T.ceildiv(top_k, block_I)):
                                 block_i_offset = block_i_id * block_I
-
-                                with T.rs("PIPE_MTE2"):
-                                    T.sync_block_wait(0)
-
-                                # Calculate synchronization count for cube operations
-                                stride = T.ceildiv(heads, block_H)
-                                sync_count_cube = task_id * stride
-                                sync_count_cube = sync_count_cube + block_h_id
-                                stride = T.ceildiv(top_k, block_I)
-                                sync_count_cube = sync_count_cube * stride
-                                sync_count_cube = sync_count_cube + block_i_id
-                                sync_count_cube = sync_count_cube % FFTS_FLAG_THRESHOLD
-                                temp = FFTS_FLAG_THRESHOLD - 1
-                                if sync_count_cube == temp:
-                                    with T.rs("PIPE_MTE3"):
-                                        T.sync_block_set(0)
+                                if block_h_id == 0:
+                                    with T.rs("PIPE_MTE2"):
+                                        T.sync_block_wait(0)
 
                                 # Process K dimension blocks
                                 for block_k_id in T.serial(T.ceildiv(full_dim, block_K)):
                                     block_k_offset = block_k_id * block_K
-                                    tail_size_k = full_dim - block_k_offset
-                                    tail_size_k = T.min(tail_size_k, block_K)
+                                    tail_size_k = T.min(full_dim - block_k_id * block_K, block_K)
 
                                     # Load sparse KV values to local memory
-                                    offset = kernel_id * top_k
-                                    offset = offset + block_i_offset
+                                    offset = kernel_id * top_k + block_i_offset
                                     T.npuir_load_nd2nz(workspace_kv[offset, block_k_offset], l1_kv_sparse,
                                                        size=[block_I, tail_size_k])
 
                                     # Load query values to local memory
-                                    offset = batch_id * seq_len
-                                    offset = offset + seq_id
-                                    offset = offset * heads
-                                    offset = offset + block_h_offset
-
+                                    offset = (batch_id * seq_len + seq_id) * heads + block_h_offset
                                     T.npuir_load_nd2nz(Q[offset, block_k_offset], l1_q,
                                                        size=[block_H, tail_size_k])
 
@@ -202,7 +181,7 @@ def sparse_attention_mla(
                                 with T.rs("PIPE_FIX"):
                                     offset = kernel_id * block_H
                                     T.npuir_store_fixpipe(l0_c, workspace_1[offset, 0], size=[block_H, block_I],
-                                                              enable_nz2nd=True)
+                                                          enable_nz2nd=True)
                                     T.sync_block_set(0)
 
                                 # Load intermediate results for next computation
@@ -214,11 +193,9 @@ def sparse_attention_mla(
                                 # Matrix multiplication: P * V
                                 for block_k_id in T.serial(T.ceildiv(dim, block_K)):
                                     block_k_offset = block_k_id * block_K
-                                    tail_size_k = dim - block_k_offset
-                                    tail_size_k = T.min(tail_size_k, block_K)
+                                    tail_size_k = T.min(dim - block_k_id * block_K, block_K)
 
-                                    offset_1 = kernel_id * top_k
-                                    offset = offset_1 + block_i_offset
+                                    offset = kernel_id * top_k + block_i_offset
                                     T.npuir_load_nd2nz(workspace_kv[offset, block_k_offset], l1_kv_sparse,
                                                        size=[block_I, tail_size_k])
 
@@ -226,7 +203,7 @@ def sparse_attention_mla(
                                                 size=[block_H, block_I, tail_size_k])
                                     offset = kernel_id * block_H
                                     T.npuir_store_fixpipe(l0_c, workspace_2[offset, block_k_offset],
-                                                              size=[block_H, tail_size_k], enable_nz2nd=True)
+                                                          size=[block_H, tail_size_k], enable_nz2nd=True)
 
                                 with T.rs("PIPE_FIX"):
                                     T.sync_block_set(0)
@@ -237,6 +214,7 @@ def sparse_attention_mla(
                 ub_kv_sparse = T.alloc_ub([block_I_half, full_dim], dtype)
                 ub_indices = T.alloc_ub([block_I_half], indices_dtype)
                 ub_acc_o = T.alloc_ub([block_H_half, dim], accum_dtype)
+                ub_acc_o_16 = T.alloc_ub([block_H_half, dim], dtype)
                 ub_acc_o_new = T.alloc_ub([block_H_half, dim], accum_dtype)
                 ub_cross_kernel_16 = T.alloc_ub([block_H_half, share_block_IK], dtype)
                 ub_cross_kernel_32 = T.alloc_ub([block_H_half, share_block_IK], accum_dtype)
@@ -256,8 +234,7 @@ def sparse_attention_mla(
 
                 # Process logical kernels in parallel
                 for task_id in T.serial(T.ceildiv(num_logic_kernels, num_kernels)):
-                    logic_kernel_id = task_id * num_kernels
-                    logic_kernel_id = logic_kernel_id + kernel_id
+                    logic_kernel_id = task_id * num_kernels + kernel_id
                     if logic_kernel_id < num_logic_kernels:
                         batch_id = logic_kernel_id // seq_len
                         seq_id = logic_kernel_id % seq_len
@@ -270,16 +247,11 @@ def sparse_attention_mla(
                         valid_mod = real_top_k % block_I
                         T.npuir_brc(value_zero, ub_var_valid_mask)
                         for idx in T.serial(valid_mod):
-                            tmp1 = 0.1
-                            tmp2 = 1.1
-                            tmp3 = tmp2 - tmp1
-                            ub_var_valid_mask[0, idx] = tmp3
+                            ub_var_valid_mask[0, idx] = 1.0
 
                         # Process head blocks
                         for block_h_id in T.serial(T.ceildiv(heads, block_H)):
-                            block_h_offset = block_h_id * block_H
-                            block_h_offset_sub = subid * block_H_half
-                            block_h_offset = block_h_offset + block_h_offset_sub
+                            block_h_offset = block_h_id * block_H + subid * block_H_half
 
                             # Initialize accumulation buffers
                             T.npuir_brc(value_zero, ub_var_logsum)
@@ -289,61 +261,35 @@ def sparse_attention_mla(
 
                             # Process top-k blocks for softmax computation
                             for block_i_id in T.serial(T.ceildiv(top_k, block_I)):
-                                block_i_offset = block_i_id * block_I
-                                tail_size_i = real_top_k - block_i_offset
-                                tail_size_i = T.min(tail_size_i, block_I)
-                                tail_size_i_half = tail_size_i + 1
-                                tail_size_i_half = tail_size_i_half // 2
+                                tail_size_i = T.min(real_top_k - block_i_id * block_I, block_I)
+                                tail_size_i_half = (T.min(real_top_k - block_i_id * block_I, block_I) + 1) // 2
 
-                                block_i_offset_sub = subid * tail_size_i_half
-                                block_i_offset = block_i_offset + block_i_offset_sub
-
-                                tail_size_i_mod2 = tail_size_i % 2
-                                incomplete_block_i = tail_size_i_mod2 * subid
-                                tail_size_i_half = tail_size_i_half - incomplete_block_i
+                                block_i_offset = block_i_id * block_I + subid * tail_size_i_half
+                                tail_size_i_half = tail_size_i_half - (tail_size_i % 2) * subid
 
                                 # Gather sparse KV values using indices
                                 if block_h_id == 0:
                                     T.npuir_brc(value_zero, ub_kv_sparse)
                                     if tail_size_i_half > 0:
-                                        offset_2 = seq_id * top_k_mul_kv_group
-                                        offset_1 = batch_id * top_k_mul_kv_group_mul_seq_len
-                                        offset = offset_1 + offset_2
+                                        offset = batch_id * top_k_mul_kv_group_mul_seq_len + seq_id * top_k_mul_kv_group
                                         offset = offset + block_i_offset
                                         T.copy(Indices[offset], ub_indices, size=[block_I_half])
                                         for idx_id in T.serial(block_I_half):
                                             current_index = ub_indices[idx_id]
-                                            offset = batch_id * kv_group_mul_seq_len_kv
-                                            offset = offset + current_index
-                                            if current_index < seq_len_kv:
+                                            offset = batch_id * kv_group_mul_seq_len_kv + ub_indices[idx_id]
+                                            if ub_indices[idx_id] < seq_len_kv:
                                                 T.copy(KV[offset, 0], ub_kv_sparse[idx_id, 0], size=[1, full_dim])
 
                                     # Store gathered KV values to workspace
-                                    offset = kernel_id * top_k
-                                    offset = offset + block_i_offset
+                                    offset = kernel_id * top_k + block_i_offset
                                     T.copy(ub_kv_sparse, workspace_kv[offset, 0], size=[block_I_half, full_dim])
 
-                                with T.rs("PIPE_MTE3"):
-                                    T.sync_block_set(0)
-
-                                # Calculate synchronization count for vector operations
-                                stride = T.ceildiv(heads, block_H)
-                                sync_count_vec = task_id * stride
-                                sync_count_vec = sync_count_vec + block_h_id
-                                stride = T.ceildiv(top_k, block_I)
-                                sync_count_vec = sync_count_vec * stride
-                                sync_count_vec = sync_count_vec + block_i_id
-                                sync_count_vec = sync_count_vec % FFTS_FLAG_THRESHOLD
-                                temp = FFTS_FLAG_THRESHOLD - 1
-                                if sync_count_vec == temp:
                                     with T.rs("PIPE_MTE3"):
-                                        T.sync_block_wait(0)
+                                        T.sync_block_set(0)
 
                                 T.copy(ub_var_scores_max, ub_var_scores_max_prev)
 
-                                offset = kernel_id * block_H
-                                offset_sub = subid * block_H_half
-                                offset = offset + offset_sub
+                                offset = kernel_id * block_H + subid * block_H_half
                                 with T.rs("PIPE_MTE2"):
                                     T.sync_block_wait(0)
 
@@ -352,7 +298,8 @@ def sparse_attention_mla(
                                     # Load attention scores
                                     T.copy(workspace_1[offset, 0], ub_cross_kernel_16, size=[block_H_half, block_I])
                                     # Cast to accumulation dtype
-                                    T.npuir_cast(ub_cross_kernel_16, ub_cross_kernel_32, round_mode="rint", size=[block_H_half, block_I])
+                                    T.npuir_cast(ub_cross_kernel_16, ub_cross_kernel_32, round_mode="rint",
+                                                 size=[block_H_half, block_I])
                                     # Apply softmax scale
                                     T.npuir_mul(ub_cross_kernel_32, acc_s_scale, ub_cross_kernel_32)
                                     # Compute max for numerical stability
@@ -369,7 +316,8 @@ def sparse_attention_mla(
                                     if tail_size_i < block_I:
                                         T.npuir_mul(ub_cross_kernel_32, ub_var_valid_mask, ub_cross_kernel_32)
                                     # Cast back to original dtype
-                                    T.npuir_cast(ub_cross_kernel_32, ub_cross_kernel_16, round_mode="rint", size=[block_H_half, block_I])
+                                    T.npuir_cast(ub_cross_kernel_32, ub_cross_kernel_16, round_mode="rint",
+                                                 size=[block_H_half, block_I])
                                 else:
                                     T.npuir_brc(value_zero, ub_cross_kernel_16)
 
@@ -391,8 +339,7 @@ def sparse_attention_mla(
                                     T.sync_block_wait(0)
                                     for block_k_id in T.serial(T.ceildiv(dim, block_K)):
                                         block_k_offset = block_k_id * block_K
-                                        tail_size_k = dim - block_k_offset
-                                        tail_size_k = T.min(tail_size_k, block_K)
+                                        tail_size_k = T.min(dim - block_k_id * block_K, block_K)
 
                                         T.copy(workspace_2[offset, block_k_offset], ub_cross_kernel_16,
                                                size=[block_H_half, tail_size_k])
@@ -401,29 +348,28 @@ def sparse_attention_mla(
                                                size=[block_H_half, tail_size_k])
 
                                 T.npuir_add(ub_acc_o, ub_acc_o_new, ub_acc_o)
+                                T.npuir_cast(ub_acc_o, ub_acc_o_16, round_mode="rint",
+                                             size=[block_H_half, dim])
 
                             # Normalize output by softmax denominator
                             T.npuir_brc(value_eps, ub_var_scores_sum)
                             T.npuir_max(ub_var_logsum, ub_var_scores_sum, ub_var_logsum)
                             T.npuir_div(ub_acc_o, ub_var_logsum, ub_acc_o)
-                            
+
                             # Write final output
                             for block_k_id in T.serial(T.ceildiv(dim, block_K)):
                                 block_k_offset = block_k_id * block_K
-                                tail_size_k = dim - block_k_offset
-                                tail_size_k = T.min(tail_size_k, block_K)
+                                tail_size_k = T.min(dim - block_k_id * block_K, block_K)
 
                                 T.npuir_cast(ub_acc_o[0, block_k_offset], ub_cross_kernel_16, round_mode="rint",
                                              size=[block_H_half, tail_size_k])
 
-                                offset_2 = seq_id * heads
-                                offset_1 = batch_id * heads_mul_seq_len
-                                offset = offset_1 + offset_2
-                                offset = offset + block_h_offset
+                                offset = batch_id * heads_mul_seq_len + seq_id * heads + block_h_offset
                                 T.copy(ub_cross_kernel_16, Output[offset, block_k_offset],
                                        size=[block_H_half, tail_size_k])
 
     return main
+
 
 def generate_tensor(shape, dtype, clear=False):
     """Generate tensor with specified shape and data type"""
@@ -568,6 +514,7 @@ def run_test(args):
     print(ref_o)
     torch.testing.assert_close(o, ref_o, rtol=5e-3, atol=1e-2)
     print("\033[92mAll check passed!\033[0m")
+
 
 
 if __name__ == "__main__":
