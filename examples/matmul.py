@@ -1,14 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025.
+import torch
 import tilelang
 import tilelang.language as T
-import torch
-torch.npu.set_device(12)
 
+torch.npu.set_device(0)
 tilelang.cache.clear_cache()
 
 M = 1024
 N = 512
 K = 2048
+
 
 @tilelang.jit(target="npuir")
 def matmul(block_M, block_N, K_L1, dtype="float16", accum_dtype="float32"):
@@ -45,9 +46,9 @@ def matmul(block_M, block_N, K_L1, dtype="float16", accum_dtype="float32"):
 
     return main
 
+
 def test_mat_mul():
     func = matmul(128, 256, 16)
-
     a = torch.randn(M, K).half().npu()
     b = torch.randn(K, N).half().npu()
     c = torch.randn(M, N).half().npu()
@@ -64,3 +65,4 @@ def test_mat_mul():
 
 if __name__ == "__main__":
     test_mat_mul()
+ 

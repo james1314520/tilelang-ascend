@@ -1,17 +1,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import argparse
 import torch
 
-torch.npu.set_device(0)
-
 import tilelang
 import tilelang.language as T
-from tilelang.jit import compiler_npu
 
+torch.npu.set_device(0)
 tilelang.cache.clear_cache()
 
 parser = argparse.ArgumentParser(description="NPU Kernel Compilation")
@@ -52,6 +48,7 @@ def vec_add(M, N, K, block_M, block_N):
 
     return main
 
+
 def generate_tensor(shape, dtype, clear=False):
     """generate tensor"""
     if clear:
@@ -65,6 +62,7 @@ def generate_tensor(shape, dtype, clear=False):
     if dtype == "bool":
         return torch.randint(low=0, high=2, size=shape).bool()
     raise ValueError('Invalid parameter "dtype" is found : {}'.format(dtype))
+
 
 def run_test(main_args):
     func = vec_add(

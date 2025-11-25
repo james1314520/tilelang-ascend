@@ -1,12 +1,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025.
-import torch
-
-torch.npu.set_device(0)
 import argparse
+import torch
 
 import tilelang
 from tilelang import language as T
 from tilelang import tvm
+
+torch.npu.set_device(0)
 
 # Clear tilelang cache
 tilelang.cache.clear_cache()

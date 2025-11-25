@@ -1,20 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025.
 import sys
 import os
-
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 import argparse
-
 import torch
-torch.npu.set_device(0)
+import torch.nn as nn
+
 
 import tilelang
 import tilelang.language as T
-from tilelang.jit import compiler_npu
-import torch.nn as nn
 
+torch.npu.set_device(0)
 tilelang.cache.clear_cache()
 
 
