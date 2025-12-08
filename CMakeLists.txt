@@ -6,6 +6,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(TILE_LANG C CXX)
 
+# Supress all warnings
+add_definitions(-w)
+
 # Set default build type to Release if not provided
 set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 
@@ -39,6 +42,30 @@ else()
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
     message(STATUS "Setting default build type to ${CMAKE_BUILD_TYPE}")
   endif()
+endif()
+
+# Setting up MLIR infrastructure
+set(NPUIR_LIBS "")
+if(USE_NPUIR)
+  set(BISHENGIR_INCLUDE_DIRS "")
+  set(BISHENGIR_LIBRARY_DIRS "")
+  if(NOT BISHENGIR_ROOT_PATH)
+    find_package(MLIR REQUIRED CONFIG)
+    message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+    list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+    set(BISHENGIR_INCLUDE_DIRS ${LLVM_INCLUDE_DIRS})
+    set(BISHENGIR_LIBRARY_DIRS ${LLVM_LIBRARY_DIRS})
+    file(GLOB NPUIR_LIBS "${LLVM_LIBRARY_DIRS}/*.a")
+  else()
+    set(BISHENGIR_INCLUDE_DIRS ${BISHENGIR_ROOT_PATH}/include)
+    set(BISHENGIR_LIBRARY_DIRS ${BISHENGIR_ROOT_PATH}/lib)
+    file(GLOB NPUIR_LIBS "${BISHENGIR_ROOT_PATH}/lib/*.a")
+  endif()
+  message(STATUS "BISHENGIR_INCLUDE_DIRS: ${BISHENGIR_INCLUDE_DIRS}")
+  message(STATUS "BISHENGIR_LIBRARY_DIRS: ${BISHENGIR_LIBRARY_DIRS}")
+  include_directories(${BISHENGIR_INCLUDE_DIRS})
+  link_directories(${BISHENGIR_LIBRARY_DIRS})
 endif()
 
 # include cmake modules
@@ -128,17 +155,10 @@ endif()
 if(USE_NPUIR)
   tilelang_file_glob(GLOB TILE_LANG_NPUIR_SRCS
     src/target/codegen_npuir.cc
+    src/target/codegen_npuir_api.cc
     src/target/rt_mod_npuir.cc
   )
   list(APPEND TILE_LANG_SRCS ${TILE_LANG_NPUIR_SRCS})
-endif()
-
-if(USE_ASCEND)
-  tilelang_file_glob(GLOB TILE_LANG_ASCEND_SRCS
-    src/target/codegen_ascend.cc
-    src/target/rt_mod_ascend.cc
-  )
-  list(APPEND TILE_LANG_SRCS ${TILE_LANG_ASCEND_SRCS})
 endif()
 
 # Include ROCm source files if ROCm is enabled
@@ -176,7 +196,7 @@ if(USE_CUDA)
   set(CUDA_MAJOR_VERSION ${CUDAToolkit_VERSION_MAJOR})
   message(STATUS "Setting CUDA_MAJOR_VERSION=${CUDA_MAJOR_VERSION}")
   add_compile_definitions(CUDA_MAJOR_VERSION=${CUDA_MAJOR_VERSION})
-  
+
   list(APPEND TILE_LANG_INCLUDES ${CUDAToolkit_INCLUDE_DIRS})
 endif(USE_CUDA)
 
@@ -228,7 +248,16 @@ endif()
 
 # Module shared library
 add_library(tilelang_module SHARED $<TARGET_OBJECTS:tilelang_objs>)
-target_link_libraries(tilelang_module PUBLIC tvm)
+target_link_libraries(
+  tilelang_module
+  PUBLIC
+  tvm
+  zstd
+  z
+  -Wl,--start-group
+  ${NPUIR_LIBS}
+  -Wl,--end-group
+)
 
 # Install targets
 if(TILE_LANG_INSTALL_STATIC_LIB)
