@@ -21,8 +21,6 @@ using namespace tir;
 class AscendCopy : public Operator {
 public:
   AscendCopy(Array<PrimExpr> args, BufferMap vmap);
-  Stmt Lower(const LowerArgs &T, arith::Analyzer *analyzer) const final;
-  LayoutMap InferLayout(const LayoutInferArgs &T, InferLevel level) final;
 
   static const Op &Get();
 
@@ -50,6 +48,11 @@ NPUIR_BINARY_OP_CLASS(Mul)
 NPUIR_BINARY_OP_CLASS(Div)
 NPUIR_BINARY_OP_CLASS(Max)
 NPUIR_BINARY_OP_CLASS(Min)
+NPUIR_BINARY_OP_CLASS(Or)
+NPUIR_BINARY_OP_CLASS(And)
+NPUIR_BINARY_OP_CLASS(Xor)
+NPUIR_BINARY_OP_CLASS(Pow)
+NPUIR_BINARY_OP_CLASS(Shl)
 
 #define NPUIR_UNARY_OP_CLASS(OPNAME)                                           \
   class Npuir##OPNAME : public Operator {                                      \
@@ -65,6 +68,11 @@ NPUIR_BINARY_OP_CLASS(Min)
 NPUIR_UNARY_OP_CLASS(Exp)
 NPUIR_UNARY_OP_CLASS(Ln)
 NPUIR_UNARY_OP_CLASS(Relu)
+NPUIR_UNARY_OP_CLASS(Sqrt)
+NPUIR_UNARY_OP_CLASS(Rsqrt)
+NPUIR_UNARY_OP_CLASS(Abs)
+NPUIR_UNARY_OP_CLASS(Rec)
+NPUIR_UNARY_OP_CLASS(Not)
 
 class NpuirDot : public Operator {
 public:
@@ -81,7 +89,7 @@ public:
   Array<Range> src0_range, src1_range, dst_range;
 };
 
-/// HIVM data copy operation with on-the-fly ND to NZ layout transformation
+/// HIVM data copy operation with on-the-fly ND to NZ layout transformation.
 class NpuirNd2nz : public Operator {
 public:
   NpuirNd2nz(Array<PrimExpr> args, BufferMap vmap);
@@ -133,7 +141,7 @@ public:
 };
 
 /// HIVM set flag sync.
-class NpuirSetFlag : public Operator {
+class NpuirSetFlag: public Operator {
 public:
   NpuirSetFlag(Array<PrimExpr> args, BufferMap vmap);
 
@@ -146,7 +154,7 @@ public:
 };
 
 /// HIVM wait flag sync.
-class NpuirWaitFlag : public Operator {
+class NpuirWaitFlag: public Operator {
 public:
   NpuirWaitFlag(Array<PrimExpr> args, BufferMap vmap);
 
@@ -157,6 +165,7 @@ public:
   std::string pipe2;
   PrimExpr event_id;
 };
+
 /// HIVM cross block sync.
 class NpuirSyncBlock : public Operator {
 public:
@@ -233,7 +242,7 @@ public:
 
   Buffer src, dst;
   std::string reduce_mode;
-  std::vector<int> reduce_dims;
+  std::vector<int64_t> reduce_dims;
 
   Array<Range> src_range, dst_range;
 };
@@ -255,6 +264,104 @@ public:
   Buffer src0, src1, dst;
   Array<Range> src0_range, src1_range, dst_range;
   std::string cmp_mod;
+};
+
+class NpuirShr : public Operator {
+public:
+  NpuirShr(Array<PrimExpr> args, BufferMap vmap);
+  static const Op &Get();
+
+  Buffer src0, src1, dst;
+  Array<Range> src0_range, src1_range, dst_range;
+  bool round;
+};
+
+/// HIVM device print operation (print var info)
+/// Device-side print for debugging
+class NpuirDevicePrintVar : public Operator {
+public:
+  NpuirDevicePrintVar(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  PrimExpr src;
+  std::string prefix;
+  bool hex;
+};
+
+/// HIVM device print operation (print buffer value)
+/// Device-side print for debugging
+class NpuirDevicePrintBuf : public Operator {
+public:
+  NpuirDevicePrintBuf(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src;
+  std::string prefix;
+  bool hex;
+
+  Array<Range> src_range;
+};
+
+/// HIVM vector gather operation
+/// Retrieve elements from a tensor/memref according to given indices
+class NpuirGather : public Operator {
+public:
+  NpuirGather(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src, dst, indices;
+
+  Array<Range> src_range, dst_range, indices_range;
+};
+
+/// HIVM vector transpose operation
+/// Permutes the dimensions of src according to the given permutation.
+class NpuirTranspose : public Operator {
+public:
+  NpuirTranspose(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src, dst;
+  std::vector<int64_t> permutation;
+
+  Array<Range> src_range, dst_range;
+};
+
+/// HIVM vector interleave operation
+/// Interleaves the values of N tensors along their last dimension.
+class NpuirInterleave : public Operator {
+public:
+  NpuirInterleave(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  std::vector<Buffer> srcs;
+  Buffer dst;
+  int64_t channel_nums;
+
+  std::vector<Array<Range>> srcs_range;
+  Array<Range> dst_range;
+};
+
+/// HIVM vector deinterleave operation
+/// Deinterleave one tensor along the last dimension.
+class NpuirDeinterleave : public Operator {
+public:
+  NpuirDeinterleave(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src;
+  std::vector<Buffer> dsts;
+  int64_t channel_nums;
+  std::string index_mode;
+
+  Array<Range> src_range;
+  std::vector<Array<Range>> dsts_range;
 };
 
 } // namespace tl

@@ -34,7 +34,7 @@ from .kernel import (
     get_block_binding,  # noqa: F401
     get_block_bindings,  # noqa: F401
 )
-from .warpgroup import ws, rs, set_flag, wait_flag, Scope  # noqa: F401
+from .warpgroup import ws  # noqa: F401
 from .allocate import (
     alloc_local,  # noqa: F401
     alloc_shared,  # noqa: F401
@@ -46,7 +46,7 @@ from .allocate import (
     alloc_L1,  # noqa: F401
     alloc_ub,  # noqa: F401
 )
-from .copy import copy, c2d_im2col, npu_copy_v2 as copy  # noqa: F401, F811
+from .copy import copy, c2d_im2col  # noqa: F401, F811
 from .gemm import GemmWarpPolicy, gemm  # noqa: F401
 from .fill import fill, clear  # noqa: F401
 from .reduce import (
@@ -58,7 +58,7 @@ from .reduce import (
     reduce_absmax,  # noqa: F401
     cumsum,  # noqa: F401
 )
-from .print import print  # noqa: F401
+#from .print import print  # noqa: F401
 from .customize import (
     atomic_add,  # noqa: F401
     atomic_addx2,  # noqa: F401
@@ -67,16 +67,52 @@ from .customize import (
     clamp,  # noqa: F401
     reshape,  # noqa: F401
     view,  # noqa: F401
-    npu_gemm as gemm,  # noqa: F401, F811
-    # npu_copy as copy,  # noqa: F401, F811
-    npu_add as tile_add,  # noqa: F401, F811
 )
-from .customize_npuir import (npuir_copy as copy, npuir_add, npuir_sub, npuir_max, npuir_min,
-                              npuir_mul, npuir_div, npuir_exp, npuir_dot, npuir_load_nd2nz,
-                              npuir_ln, npuir_relu, npuir_select, npuir_cmp,
-                              npuir_store_fixpipe, npuir_brc, npuir_cast, npuir_reduce, rs,
-                              set_flag, wait_flag, pipe_barrier, block_barrier, subblock_barrier,
-                              sync_block_set, sync_block_wait, Scope)
+from .customize_npuir import (
+    npuir_copy as copy,
+    npuir_add,
+    npuir_sub,
+    npuir_max,
+    npuir_min,
+    npuir_mul,
+    npuir_div,
+    npuir_or,
+    npuir_and,
+    npuir_xor,
+    npuir_pow,
+    npuir_shl,
+    npuir_shr,
+    npuir_exp,
+    npuir_dot,
+    npuir_ln,
+    npuir_load_nd2nz,
+    npuir_store_fixpipe,
+    npuir_brc,
+    npuir_cast,
+    npuir_reduce,
+    npuir_relu,
+    npuir_select,
+    npuir_cmp,
+    npuir_sqrt,
+    npuir_rsqrt,
+    npuir_abs,
+    npuir_rec,
+    npuir_not,
+    npuir_gather,
+    npuir_interleave,
+    npuir_deinterleave,
+    npuir_transpose,
+    rs,
+    set_flag,
+    wait_flag,
+    pipe_barrier,
+    block_barrier,
+    subblock_barrier,
+    sync_block_set,
+    sync_block_wait,
+    Scope,
+    npuir_print as print,
+)
 from .logical import any_of, all_of  # noqa: F401
 from .builtin import *  # noqa: F401
 
@@ -104,7 +140,7 @@ def annotate_layout(layout_map: Dict):
 
     Returns:
         block_attr: a block attribute
-    
+
     Example:
         @T.prim_func
         def main(
@@ -137,7 +173,7 @@ def annotate_padding(padding_map: Dict):
 
     Returns:
         block_attr: a block attribute
-    
+
     Example:
         @T.prim_func
         def main(
@@ -169,48 +205,3 @@ def annotate_padding(padding_map: Dict):
 def import_source(source: Optional[str] = None):
     # source is the source code to be imported
     return block_attr({"pragma_import_c": source}) if source is not None else None
-
-
-def init_flag(fmap):
-    inst = ""
-    for src, d in fmap.items():
-        for dst, stages in d.items():
-            for stage in stages:
-                inst += f"AscendC::SetFlag<AscendC::HardEvent::{src}_{dst}>({stage});\n"
-
-    return attr(None, "init_flag", inst)
-
-
-def clear_flag(fmap):
-    inst = ""
-    for src, d in fmap.items():
-        for dst, stages in d.items():
-            for stage in stages:
-                inst += f"AscendC::WaitFlag<AscendC::HardEvent::{src}_{dst}>({stage});\n"
-
-    @macro
-    def _get_inst():
-        with attr(None, "clear_flag", inst):
-            call_extern("handle", "...")
-
-    # return attr(call_extern("handle", "..."), "clear_flag", inst)
-    return _get_inst()
-
-
-def npu_use_swizzle(m, n, k, block_m, block_n, off=1, dir=0):
-    # If order is row, use rasterization2DRow, otherwise use rasterization2DColumn
-    # The panel size is the number of threads in a warp
-    # Use to improve the L2 Cache Locality
-    # device_func = ("rasterization2DRow" if order == "row" else "rasterization2DColumn")
-    return attr(
-        None, "threadblock_swizzle_pattern",
-        f"tl::ascend::thread_block_swizzle<{m}, {n}, {k}, {block_m}, {block_n}, {off}, {dir}>")
-
-
-del use_swizzle
-
-
-# let npu_use_swizzle is aliased to use_swizzle
-def use_swizzle(m, n, k, block_m, block_n, off=1, dir=0):
-    """Alias for npu_use_swizzle with proper signature for function hints."""
-    return npu_use_swizzle(m, n, k, block_m, block_n, off, dir)

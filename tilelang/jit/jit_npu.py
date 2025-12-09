@@ -30,7 +30,6 @@ def _get_npucompiler_path() -> str:
         return os.path.join(bisheng_install_path, "bishengir-compile")
     else:
         bishengir = os.path.join(ascend_home, "bisheng_toolkit", "bishengir", "bin")
-        os.environ["BISHENG_INSTALL_PATH"] = bishengir
         return os.path.join(bishengir, "bishengir-compile")
 
 
@@ -57,10 +56,86 @@ def convert_sigtype_to_int(sigty: str):
 
     return MAP_SIGTYPE_TO_INT[sigty]
 
+def _get_bisheng_path() -> str:
+    bisheng_path = shutil.which("bisheng")
+    if bisheng_path is None:
+        npu_compiler_root = os.getenv("TILELANG_NPU_COMPILER_PATH", "")
+        if npu_compiler_root is None:
+            raise EnvironmentError(
+                "Couldn't find executable bisheng or TILELANG_NPU_COMPILER_PATH"
+            )
+        bisheng_path = os.path.join(npu_compiler_root, "ccec")
+    return bisheng_path
 
-def generate_npu_wrapper_src(
-    constants, signature, workspace_size, mix_mode, lock_num, lock_ini_val
-):
+def extract_device_print_code_from_cann():
+    #from triton.backends.ascend.utils import _get_bisheng_path
+    ccec_compiler_bin_folder, _ = os.path.split(os.path.realpath(_get_bisheng_path()))
+    ccec_compiler_folder, _ = os.path.split(ccec_compiler_bin_folder)
+    clang_version = os.listdir(os.path.join(ccec_compiler_folder, "lib/clang/"))[0]
+    ccelib_path = os.path.join(ccec_compiler_folder, f"lib/clang/{clang_version}/include/ccelib")
+
+    def read_header(header_path):
+        with open(os.path.join(ccelib_path, header_path), 'r') as f:
+            code = f.read()
+
+        # remove all #include "..."
+        lines = code.splitlines()
+        purged_lines = []
+        for line in lines:
+            normalized_line = ' '.join(line.split())
+            if not normalized_line.startswith('#include "'):
+                purged_lines.append(line)
+        code = '\n'.join(purged_lines)
+
+        # remove [aicore] functions
+        aicore_positions = []
+        for m in re.finditer(r'\[aicore\]', code):
+            aicore_positions.append(m.start())
+
+        def find_aicore_function_span(src, pos):
+            for i in range(pos - 1, -1, -1):
+                if src[i] == '}':  # this relies on that all [aicore] functions come after normal functions
+                    left = i + 1
+                    break
+            n = len(src)
+            brace_nest = 0
+            for j in range(pos, n, 1):
+                if src[j] == '{':
+                    brace_nest += 1
+                elif src[j] == '}':
+                    brace_nest -= 1
+                    if brace_nest == 0:
+                        right = j
+                        break
+            return left, right
+
+        new_code = ''
+        segment_start = 0
+        for pos in aicore_positions:
+            left, right = find_aicore_function_span(code, pos)
+            new_code += code[segment_start:left]
+            segment_start = right + 1
+        new_code += code[segment_start:]
+
+        # remove __gm__ and rename macros
+        new_code = new_code.replace('__gm__', ' ')
+        new_code = new_code.replace('__CCELIB_RT_ERROR_NONE', 'RT_ERROR_NONE')
+        new_code = new_code.replace('__CCELIB_RT_MEMORY_HBM', 'RT_MEMORY_HBM')
+        new_code = new_code.replace('__CCELIB_RT_MEMCPY_HOST_TO_DEVICE', 'RT_MEMCPY_HOST_TO_DEVICE')
+        new_code = new_code.replace('__CCELIB_RT_MEMCPY_DEVICE_TO_HOST', 'RT_MEMCPY_DEVICE_TO_HOST')
+        return new_code
+
+    # the following headers should be included in this order
+    return '\n'.join([
+        read_header('common/common_impl.h'),
+        read_header('internal/debug_tunnel/payload.h'),
+        read_header('internal/debug_tunnel/payload_impl.h'),
+        read_header('internal/debug_tunnel/tunnel.h'),
+        read_header('internal/debug_tunnel/tunnel_impl.h')
+    ])
+
+
+def generate_npu_wrapper_src(constants, signature, workspace_size, mix_mode, lock_num, lock_ini_val):
     def _ty_to_cpp(ty):
         if ty[0] == "*":
             return "void*"
@@ -314,6 +389,7 @@ extern "C" {
 #include <Python.h>
 {'#include <torch_npu/csrc/framework/OpCommand.h>' if enable_taskqueue else ''}
 #include "experiment/runtime/runtime/rt.h"
+{extract_device_print_code_from_cann()}
 
 #define TENSOR_KIND_INPUT 0
 #define TENSOR_KIND_OUTPUT 1
@@ -332,6 +408,7 @@ static void _launch(const char* kernelName, const void* func, rtStream_t stream,
   {'auto launch_call = [=]()' if enable_taskqueue else ''} {{
     uint32_t blockNum = gridX * gridY * gridZ;
     {'blockNum = std::min(blockNum, (uint32_t)' + str(num_physical_blocks) + ');' if enable_auto_map_parallel_blocks else ''}
+    cce::internal::DebugTunnelData *DTData = cce::internal::DebugTunnel::Open(blockNum);
     rtError_t ret;
     void *ffts_addr = NULL;
     uint32_t ffts_len; ret = rtGetC2cCtrlAddr((uint64_t*)&ffts_addr, &ffts_len);
@@ -370,15 +447,19 @@ static void _launch(const char* kernelName, const void* func, rtStream_t stream,
       void* workspace_addr __attribute__((aligned(8)));
       {' '.join(f'{_ty_to_cpp(ty)} arg{i} __attribute__((aligned({4 if ty[0] != "*" and ty[-2:] != "64" else 8})));' for i, ty in signature.items() if i not in constants)}
       {' '.join(f'{_ty_to_cpp(ty)} grid{mark} __attribute__((aligned(4)));' for mark, ty in grid_info.items())}
+      void* DTData __attribute__((aligned(8)));
     }} args = {{
       static_cast<void*>(ffts_addr),
       static_cast<void*>(syncBlockLock),
       static_cast<void*>(workspace_addr),
       {', '.join(f'static_cast<{_ty_to_cpp(ty)}>(arg{i})' for i, ty in signature.items() if i not in constants)},
       {', '.join(f'static_cast<{_ty_to_cpp(ty)}>(grid{mark})' for mark, ty in grid_info.items())}
+      , static_cast<void*>(DTData)
     }};
     {cpp_msprof_call_before_launch}
     ret = rtKernelLaunch(func, blockNum, static_cast<void*>(&args), sizeof(args), NULL, stream);
+    void *&stream_ref = const_cast<void*&>(stream);
+    cce::internal::DebugTunnel::Close(DTData, stream_ref);
     {cpp_msprof_call_after_launch}
     {'return ret;' if enable_taskqueue else ''}
    }};
@@ -526,7 +607,7 @@ registerKernel(const char *name, const void *data, size_t data_size, int shared,
   // data_size: The size of binary data
   // shared: Unused
   // device: Target Device ID
-  // kernel mod str: Kernel mode string(aiv or others)
+  // kernel mod str: Kernel mode string (aiv or others)
   rtError_t rtRet;
 
   // Create a binary data structure
@@ -743,7 +824,6 @@ class NPUUtils(object):
     def get_aivector_core_num(self):
         return self.get_device_properties("npu")["num_vectorcore"]
 
-
 class JitKernel_NPU:
     def __init__(self, metadata: dict) -> None:
         # 1 launch path
@@ -955,7 +1035,7 @@ class compiler_npu:
         index = 0
 
         # Skip parameters insert by compiler
-        for param in params[3:-6]:
+        for param in params[3: -6]:
             # Check if the type includes the target type
             found_type = None
             for t_type in target_types:
@@ -1044,6 +1124,7 @@ class compiler_npu:
         return os.environ.get("ASCEND_HOME_PATH")
 
     def _check_cxx11_abi(self):
+        import torch
         return 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 
     def _build_npu_ext(

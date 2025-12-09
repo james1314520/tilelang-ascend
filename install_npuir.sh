@@ -5,11 +5,25 @@
 
 # Add command line option parsing
 USE_LLVM=false
+BISHENGIR_PATH=""
 while [[ $# -gt 0 ]]; do
     case $1 in
         --enable-llvm)
             USE_LLVM=true
             shift
+            ;;
+        --bishengir-path=*)
+            BISHENGIR_PATH="${1#*=}"
+            shift
+            ;;
+        --bishengir-path)
+            if [ -n "$2" ]; then
+                BISHENGIR_PATH="$2"
+                shift 2
+            else
+                echo "err: --bishengir-path needs to be specified with bishengir-compile install path" >&2
+                exit 1
+            fi
             ;;
         *)
             echo "Unknown option: $1"
@@ -100,7 +114,21 @@ fi
 # Step 9: Clone and build TVM
 echo "Cloning TVM repository and initializing submodules..."
 # clone and build tvm
-git submodule update --init --recursive
+git submodule update --init --recursive 3rdparty/catlass 3rdparty/composable_kernel 3rdparty/cutlass 3rdparty/tvm
+
+if [ -z "$BISHENGIR_PATH" ]; then
+    echo "warring: no --bishengir-path set, bishengir path will be found in environment variable PATH"
+    # build bishengir in 3rdparty
+    echo "build bishengir in 3rdparty"
+    git submodule update --init --recursive 3rdparty/AscendNPU-IR
+    pushd 3rdparty/AscendNPU-IR
+    bash ./build-tools/apply_patches.sh
+    rm -rf ./build
+    ./build-tools/build.sh -o ./build --build-torch-mlir --c-compiler=clang --cxx-compiler=clang++ \
+    --add-cmake-options="-DCMAKE_LINKER=lld -DLLVM_ENABLE_LLD=ON" --apply-patches --bishengir-publish=off
+    BISHENGIR_PATH="./3rdparty/AscendNPU-IR/build/install"
+    popd
+fi
 
 if [ -d build ]; then
     rm -rf build
@@ -111,9 +139,10 @@ cp 3rdparty/tvm/cmake/config.cmake build
 cd build
 
 echo "set(USE_NPUIR ON)" >> config.cmake
+echo "set(BISHENGIR_ROOT_PATH $BISHENGIR_PATH)" >> config.cmake
 
 echo "Running CMake for TileLang..."
-cmake ..
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
 if [ $? -ne 0 ]; then
     echo "Error: CMake configuration failed."
     exit 1
@@ -141,7 +170,14 @@ cd ..
 TILELANG_PATH="$(pwd)"
 echo "TileLang path set to: $TILELANG_PATH"
 echo "Configuring environment variables for TVM..."
-echo "export PYTHONPATH=${TILELANG_PATH}:\$PYTHONPATH" >> ~/.bashrc
+
+TILELANG_EXPORT_COMMAND="export PYTHONPATH=${TILELANG_PATH}:\$PYTHONPATH"
+if ! grep -Fxq "$TILELANG_EXPORT_COMMAND" ~/.bashrc; then
+    echo "$TILELANG_EXPORT_COMMAND" >> ~/.bashrc
+    echo "$TILELANG_EXPORT_COMMAND updated in ~/.bashrc"
+else
+    echo "$TILELANG_EXPORT_COMMAND already exists in ~/.bashrc"
+fi
 
 # Step 12: Source .bashrc to apply changes
 echo "Applying environment changes by sourcing .bashrc..."

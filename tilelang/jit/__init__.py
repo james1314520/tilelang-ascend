@@ -68,11 +68,9 @@ def compile(
             "tl.dynamic_vectorize_size_bits": int, default: 128
             "tl.disable_safe_memory_legalize": bool, default: False
     """
-
     if target == 'npuir':
         compile_npuir = compiler_npu()
         return compile_npuir.compile(func)
-
     return cached(
         func=func,
         out_idx=out_idx,
