@@ -17,6 +17,11 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 
 ## Latest News
+
+- 9/12/2025 🚀: Support for additional vector ops (VFlip, VLn, VNot, VAbs, VAnd, VOr, VCmp, VPad, VPow, VRec, VRelu, VRSqrt, VSel, VShl, VShr, VXor, VTranspose, VInterleave, VGather)!
+
+- 9/12/2025 🚀: Support compilation based on MLIR APIs and fully replace the previous string-based implementation, providing a robust and extensible compilation process!
+
 - 21/11/2025 🚀: Support integrated compilation of open source AscendNPU-IR together with TileLang, easing the compilation experience!
 
 - 29/09/2025 🚀: Officially establish the NPU Intermediate Representation (AscendNPU IR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
