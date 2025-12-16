@@ -196,7 +196,7 @@ Stmt AscendCopy::Lower(const LowerArgs &T, arith::Analyzer *analyzer) const {
     int src_ndim = src->shape.size(), dst_ndim = dst->shape.size();
 
     if (dst.scope() == "global") {
-      ss << src->shape[src_ndim - 2] << ", " << src->shape[src_ndim - 1]; 
+      ss << src->shape[src_ndim - 2] << ", " << src->shape[src_ndim - 1];
       if (config.l0c2gm) {
         ss << ", " << enRelu;
       }
@@ -250,8 +250,6 @@ Stmt AscendCopy::Lower(const LowerArgs &T, arith::Analyzer *analyzer) const {
   return Evaluate(new_call);
 }
 
-
-
 LayoutMap AscendCopy::InferLayout(const LayoutInferArgs &T, InferLevel level) {
   LayoutMap results;
   // TODO: add logic to infer layout for AscendCopy
@@ -262,5 +260,36 @@ TIR_REGISTER_TL_OP(AscendCopy, ascend_copy)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
+
+// -----------------------------------------------------------------------------------------
+
+#define ASCEND_BINARY_OP_CTOR(OPNAME, opname)                                   \
+  Ascend##OPNAME::Ascend##OPNAME(Array<PrimExpr> args, BufferMap vmap) {         \
+    Array<Range> rgs[3];                                                       \
+    Buffer bf[3];                                                              \
+    for (int i = 0; i < 3; i++) {                                              \
+      auto expr = args[i];                                                     \
+      auto call = expr.as<CallNode>();                                         \
+      ICHECK(call);                                                            \
+      auto region = RegionOp(call->args, vmap);                                \
+      rgs[i] = region.GetRanges();                                             \
+      bf[i] = region.GetBuffer();                                              \
+    }                                                                          \
+    std::tie(this->src0, this->src1, this->dst) =                              \
+        std::tie(bf[0], bf[1], bf[2]);                                         \
+    std::tie(this->src0_range, this->src1_range, this->dst_range) =            \
+        std::tie(rgs[0], rgs[1], rgs[2]);                                      \
+  }                                                                            \
+  TIR_REGISTER_TL_OP(Ascend##OPNAME, ascend_##opname)                            \
+      .set_num_inputs(3)                                                       \
+      .set_attr<TCallEffectKind>("TCallEffectKind",                            \
+                                 Integer(CallEffectKind::kOpaque));
+
+ASCEND_BINARY_OP_CTOR(Add, add)
+
+
+
+
+
 } // namespace tl
 } // namespace tvm
