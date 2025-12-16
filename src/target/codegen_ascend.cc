@@ -393,6 +393,8 @@ void CodeGenTileLangAscend::VisitStmt_(const BufferStoreNode *op) {
 
 // ================================================================================================
 
+
+
 std::string CodeGenTileLangAscend::PrintBufferOffset(const CallNode* call_arg_node, bool has_offset) {
   auto _var = call_arg_node->args[1].as<VarNode>();
   auto _var_offset = PrintExpr(call_arg_node->args[2]);
@@ -404,6 +406,13 @@ std::string CodeGenTileLangAscend::PrintBufferOffset(const CallNode* call_arg_no
     return _var_name + "[" + _var_offset + "]";
   }
   return _var_name;
+}
+
+void CodeGenTileLangAscend::AddDeclStream(std::ostringstream &ss, const std::string &str) {
+  std::string content = ss.str();
+  if (content.find(str) == std::string::npos) {
+    ss << str;
+  }
 }
 
 void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
@@ -424,17 +433,11 @@ void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::st
                << ");\n";
 }
 
-void CodeGenTileLangAscend::AddDeclStream(std::ostringstream &ss, const std::string &str) {
-  std::string content = ss.str();
-  if (content.find(str) == std::string::npos) {
-    ss << str;
-  }
-}
 
 bool z00928906(const CallNode *op, std::ostream &os, const std::string& op_name) {
   bool result = true;
   if (op->op.same_as(Op::Get("tl.ascend_add"))){
-    BinaryVecOpCodegen(op, op_name);
+    BinaryVecOpCodegen(op, "AscendC::Add");
   } else {
     result = false;
   }

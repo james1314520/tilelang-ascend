@@ -163,6 +163,45 @@ def brcb(dst: Buffer, src: Buffer, repeat_times: PrimExpr, dst_blk_stride: PrimE
                          repeat_times, dst_blk_stride, dst_repeat_stride)
 
 
+def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
+              src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
+
+    def _handle_buffer_region(br: BufferRegion, mask):
+        bf = br.buffer
+        indices = [x.min for x in br.region]
+        offset = bf.offset_of(indices)[0]
+
+        extent = [x.extent for x in br.region]
+        return bf.access_ptr(mask, offset=offset), extent
+
+    if isinstance(dst, BufferRegion):
+        dst_ptr, dst_extent = _handle_buffer_region(dst, "w")
+    else:
+        dst_ptr = dst.access_ptr("w")
+        dst_extent = dst.shape
+    if isinstance(src0, BufferRegion):
+        src0_ptr, src0_extent = _handle_buffer_region(src0, "r")
+    else:
+        src0_ptr = src0.access_ptr("r")
+        src0_extent = src0.shape
+
+    size_0 = math.prod(dst_extent)
+    size_1 = math.prod(src0_extent)
+    assert size_0 == size_1, "size must be same"
+    if isinstance(src1, BufferLoad):
+        buffer_1 = src1.buffer
+        indices_1 = src1.indices
+        # we only can pass the extra index
+        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
+                             buffer_1.access_ptr("r"), indices_1[0], size_0)
+
+    elif isinstance(src1, (PrimExpr, float)):
+        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
+    else:
+        return T.call_intrin("handle", f"tl.ascend_{op}", dst_ptr, src0_ptr, src1.access_ptr("r"),
+                             size_0)
+
+
 def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
               src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
 
@@ -201,9 +240,8 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
         return T.call_extern("handle", f"AscendC::{op}", dst_ptr, src0_ptr, src1.access_ptr("r"),
                              size_0)
 
-
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "Add")
+    return binary_op_v1(dst, src0, src1, "add")
 
 
 def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
