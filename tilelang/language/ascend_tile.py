@@ -16,11 +16,11 @@ def _dtype(buf):
 
 def fill(buffer: Buffer, value: PrimExpr):
     """Fill a buffer or buffer region with a specified value.
-    
+
     Args:
         buffer: Either a TVM buffer or buffer region to be filled
         value: The value to fill the buffer with
-    
+
     Returns:
         A TVM intrinsic call that performs the fill operation
     """
@@ -113,7 +113,7 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
 
     dst_ptr = retrieve_ptr(dst, "r")
     src0_ptr = retrieve_ptr(src0, "r")
-    
+
     sel_mask_ptr = selMask.access_ptr("r")
     src0_extent = src0_shape
 
@@ -309,6 +309,7 @@ def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
     return T.call_extern("handle", f"AscendC::ShiftRight", dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
+
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
     repeatTimes = math.prod(src0.shape) // 32
     return T.call_extern("handle", f"AscendC::Sort32", dst.access_ptr("w"),
@@ -359,15 +360,15 @@ def reduce_sum(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
 
 
 def block_reduce_max(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceMax", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)  
+    return T.call_extern("handle", "AscendC::BlockReduceMax", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def block_reduce_min(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceMin", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)    
+    return T.call_extern("handle", "AscendC::BlockReduceMin", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def block_reduce_sum(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceSum", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)    
+    return T.call_extern("handle", "AscendC::BlockReduceSum", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr], mode: str):
@@ -422,7 +423,7 @@ def sin(dst: Buffer, src: Buffer, tmp: Buffer):
     return T.call_extern("handle", f"AscendC::Sin", dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 
-                
+
 def cos(dst: Buffer, src: Buffer, tmp: Buffer):
     size_0 = math.prod(src.shape)
     size_2 = math.prod(dst.shape)

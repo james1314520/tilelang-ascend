@@ -55,6 +55,15 @@ public:
   void AddFunction(const GlobalVar &gvar, const PrimFunc &f);
 
 private:
+  std::string PrintBufferOffset(const CallNode* call_arg, bool has_offset = true);
+
+  void AddDeclStream(std::ostringstream &ss, const std::string &str);
+
+  void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
+
+
+
+private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.
   bool IsScopePartOfType() const final { return false; }
 
