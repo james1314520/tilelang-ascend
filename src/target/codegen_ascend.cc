@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "../op/ascend.h"
 #include "../op/builtin.h"
 
 #include "arith/pattern_match.h"
@@ -391,75 +392,7 @@ void CodeGenTileLangAscend::VisitStmt_(const BufferStoreNode *op) {
                 << ");\n";
 }
 
-// ================================================================================================
-
-std::string CodeGenTileLangAscend::PrintBufferOffset(const CallNode* call_arg_node, bool has_offset) {
-  auto _var = call_arg_node->args[1].as<VarNode>();
-  auto _var_offset = PrintExpr(call_arg_node->args[2]);
-  auto _var_name = var_idmap_[_var];
-  if (_var_name == "") {
-    _var_name = _var->name_hint;
-  }
-  if (has_offset) {
-    return _var_name + "[" + _var_offset + "]";
-  }
-  return _var_name;
-}
-
-void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
-  std::vector<std::string> var_names;
-  for (int i = 1; i < op->args.size() - 1; i++) {
-    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
-    var_names.push_back(var_name);
-  }
-  this->PrintIndent();
-  this->stream << op_name << "(";
-  for (int i = 0; i < var_names.size(); i++) {
-    this->stream << var_names[i];
-    if (i != var_names.size() - 1) {
-      this->stream << ", ";
-    }
-  }
-  this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
-               << ");\n";
-}
-
-void CodeGenTileLangAscend::AddDeclStream(std::ostringstream &ss, const std::string &str) {
-  std::string content = ss.str();
-  if (content.find(str) == std::string::npos) {
-    ss << str;
-  }
-}
-
-bool z00928906(const CallNode *op, std::ostream &os, const std::string& op_name) {
-  bool result = true;
-  if (op->op.same_as(Op::Get("tl.ascend_add"))){
-    BinaryVecOpCodegen(op, op_name);
-  } else {
-    result = false;
-  }
-  return result;
-}
-
-bool h00909914(const CallNode *op, std::ostream &os, const std::string& op_name) {
-  bool result = true;
-  if (op->op.same_as(Op::Get("tl.ascend_XX"))){
-
-  } else {
-      result = false;
-  }
-  return result;
-}
-
 void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
-  std::string op_name_v1 = Downcast<StringImm>(op->args[0])->value;
-  bool result_zsf = z00928906(op, os, op_name_v1) ;
-  if(result_zsf){return; }
-
-  bool result_hj = h00909914(op, os, op_name_v1) ;
-  if(result_hj){return; }
-
-
   auto print_buffer_offset = [&](const CallNode *op,
                                  bool has_offset = true) -> std::string {
     auto _var = op->args[1].as<VarNode>();
@@ -1208,13 +1141,13 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
   } else if (op->op.same_as(tl::loop_break())) {
     this->PrintIndent();
     this->stream << "break;\n";
+  } else if (op->op.same_as(tl::ascend_exp())) {
+    UnaryVecOpCodegen(op, "AscendC::Exp");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
   }
 }
-
-// =================================================================================================
 
 void CodeGenTileLangAscend::VisitStmt_(const AttrStmtNode *op) {
   if (op->attr_key == "threadblock_swizzle_pattern") {
@@ -1661,6 +1594,62 @@ void CodeGenTileLangAscend::AddFunction(const GlobalVar &gvar,
 
   PrintHostFunc(f, func_name, stream, this->core_num_, shape_vars);
   std::string content = stream.str();
+}
+
+std::string CodeGenTileLangAscend::PrintBufferOffset(const CallNode* call_arg_node, bool has_offset) {
+  auto _var = call_arg_node->args[1].as<VarNode>();
+  auto _var_offset = PrintExpr(call_arg_node->args[2]);
+  auto _var_name = var_idmap_[_var];
+  if (_var_name == "") {
+    _var_name = _var->name_hint;
+  }
+  if (has_offset) {
+    return _var_name + "[" + _var_offset + "]";
+  }
+  return _var_name;
+}
+
+void CodeGenTileLangAscend::AddDeclStream(std::ostringstream &ss, const std::string &str) {
+  std::string content = ss.str();
+  if (content.find(str) == std::string::npos) {
+    ss << str;
+  }
+}
+
+void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 1; i < op->args.size() - 1; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+               << ");\n";
+}
+
+void CodeGenTileLangAscend::UnaryVecOpCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 0; i < op->args.size() - 1; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+               << ");\n";
 }
 
 } // namespace codegen
