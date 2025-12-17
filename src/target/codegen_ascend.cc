@@ -434,7 +434,7 @@ void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::st
 }
 
 
-bool z00928906(const CallNode *op, std::ostream &os, const std::string& op_name) {
+bool CodeGenTileLangAscend::z00928906(const CallNode *op, std::ostream &os, const std::string& op_name) {
   bool result = true;
   if (op->op.same_as(Op::Get("tl.ascend_add"))){
     BinaryVecOpCodegen(op, "AscendC::Add");
@@ -444,9 +444,9 @@ bool z00928906(const CallNode *op, std::ostream &os, const std::string& op_name)
   return result;
 }
 
-bool h00909914(const CallNode *op, std::ostream &os, const std::string& op_name) {
+bool CodeGenTileLangAscend::h00909914(const CallNode *op, std::ostream &os, const std::string& op_name) {
   bool result = true;
-  if (op->op.same_as(Op::Get("tl.ascend_XX"))){
+  if (op->op.same_as(Op::Get("tl.ascend_add"))){
 
   } else {
       result = false;

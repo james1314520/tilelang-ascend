@@ -1,9 +1,51 @@
 import tilelang.language as T
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Literal
+from tvm import ir, tir
 import numpy as np
 
 import math
+
+from tilelang.language.copy import buffer_region_to_tile_region, buffer_load_to_tile_region, region
+
+
+def _get_extent(data):
+    if isinstance(data, tir.Var) and T.has_let_value(data):
+        data = T.get_let_value(data)
+    result = []
+    if isinstance(data, tir.Buffer):
+        result = data.shape
+    elif isinstance(data, tir.BufferRegion):
+        result = [x.extent for x in data.region]
+    return result
+
+
+def _buffer_to_tile_region_with_extent(buffer: tir.Buffer, access_type: str, extent:[]):
+    """Convert a TVM buffer to a tile region descriptor.
+
+    Args:
+        buffer (tir.Buffer): The buffer to convert
+        access_type (str): Type of access - 'r' for read, 'w' for write, 'rw' for read-write
+        extent ([]): buffer extent
+
+    Returns:
+        tir.Call: A region descriptor covering the entire buffer
+    """
+    mins = [0 for _ in buffer.shape]
+    return region(T.BufferLoad(buffer, mins), access_type, *extent)
+
+
+def _to_region(data, access_type, extent):
+    if isinstance(data, tir.Var) and T.has_let_value(data):
+        data = T.get_let_value(data)
+    if isinstance(data, tir.Buffer):
+        return _buffer_to_tile_region_with_extent(data, access_type, extent)
+    elif isinstance(data, tir.BufferRegion):
+        return buffer_region_to_tile_region(data, access_type, extent[-len(data.buffer.shape):])
+    elif isinstance(data, tir.IntImm) or isinstance(data, tir.FloatImm):
+        return data
+    else:
+        return buffer_load_to_tile_region(data, access_type, extent[-len(data.buffer.shape):])
 
 
 def _dtype(buf):
@@ -198,7 +240,10 @@ def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferReg
     elif isinstance(src1, (PrimExpr, float)):
         return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
     else:
-        return T.call_intrin("handle", f"tl.ascend_{op}", dst_ptr, src0_ptr, src1.access_ptr("r"),
+        src0_in = _to_region(src0, "r", _get_extent(src0))
+        src1_in = _to_region(src1, "r", _get_extent(src1))
+        dst_in = _to_region(dst, "w", _get_extent(dst))
+        return T.call_intrin("handle", f"tl.ascend_{op}", dst_in, src1_in, src0_in,
                              size_0)
 
 
