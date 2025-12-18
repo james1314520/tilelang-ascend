@@ -330,30 +330,30 @@ def exp(dst: Buffer, src0: Buffer):
 
 
 def ln(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Ln")
+    return unary_op(dst, src0, "ln")
 
 
 def abs(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Abs")
+    return unary_op(dst, src0, "abs")
 
 
 def reciprocal(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Reciprocal")
+    return unary_op(dst, src0, "reciprocal")
 
 
 def sqrt(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Sqrt")
+    return unary_op(dst, src0, "sqrt")
 
 
 def rsqrt(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Rsqrt")
+    return unary_op(dst, src0, "rsqrt")
 
 
 def relu(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Relu")
+    return unary_op(dst, src0, "relu")
 
 def not_tl(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Not")
+    return unary_op(dst, src0, "not")
 
 
 def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op: str):

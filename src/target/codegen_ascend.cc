@@ -692,11 +692,7 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
                    << ", " << PrintExpr(op->args[5]) << ");\n";
     } else if (op_name == "AscendC::Add" || op_name == "AscendC::Max" ||
                op_name == "AscendC::Min" || op_name == "AscendC::Sub" ||
-               op_name == "AscendC::Mul" || op_name == "AscendC::Exp" ||
-               op_name == "AscendC::Ln" || op_name == "AscendC::Abs" ||
-               op_name == "AscendC::Reciprocal" || op_name == "AscendC::Sqrt" ||
-               op_name == "AscendC::Rsqrt" || op_name == "AscendC::Not" ||
-               op_name == "AscendC::Relu" || op_name == "AscendC::Div" ||
+               op_name == "AscendC::Mul" ||  op_name == "AscendC::Div" ||
                op_name == "AscendC::And" || op_name == "AscendC::Or" ) {
       std::vector<std::string> var_names;
       for (int i = 1; i < op->args.size() - 1; i++) {
@@ -1143,6 +1139,20 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     this->stream << "break;\n";
   } else if (op->op.same_as(tl::ascend_exp())) {
     UnaryVecOpCodegen(op, "AscendC::Exp");
+  } else if (op->op.same_as(tl::ascend_ln())) {
+    UnaryVecOpCodegen(op, "AscendC::Ln");
+  } else if (op->op.same_as(tl::ascend_abs())) {
+    UnaryVecOpCodegen(op, "AscendC::Abs");
+  } else if (op->op.same_as(tl::ascend_reciprocal())) {
+    UnaryVecOpCodegen(op, "AscendC::Reciprocal");
+  } else if (op->op.same_as(tl::ascend_sqrt())) {
+    UnaryVecOpCodegen(op, "AscendC::Sqrt");
+  } else if (op->op.same_as(tl::ascend_rsqrt())) {
+    UnaryVecOpCodegen(op, "AscendC::Rsqrt");
+  } else if (op->op.same_as(tl::ascend_relu())) {
+    UnaryVecOpCodegen(op, "AscendC::Relu");
+  } else if (op->op.same_as(tl::ascend_not())) {
+    UnaryVecOpCodegen(op, "AscendC::Not");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);

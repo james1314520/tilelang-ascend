@@ -38,6 +38,20 @@ private:
 
 TVM_DLL const Op &ascend_exp();
 
+TVM_DLL const Op &ascend_ln();
+
+TVM_DLL const Op &ascend_abs();
+
+TVM_DLL const Op &ascend_reciprocal();
+
+TVM_DLL const Op &ascend_sqrt();
+
+TVM_DLL const Op &ascend_rsqrt();
+
+TVM_DLL const Op &ascend_relu();
+
+TVM_DLL const Op &ascend_not();
+
 } // namespace tl
 } // namespace tvm
 
