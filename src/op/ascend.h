@@ -78,6 +78,8 @@ TVM_DLL const Op &ascend_sort();
 
 TVM_DLL const Op &ascend_merge_sort();
 
+TVM_DLL const Op &ascend_topk();
+
 } // namespace tl
 } // namespace tvm
 

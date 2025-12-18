@@ -80,6 +80,8 @@ private:
   void SortCodegen(const CallNode *op);
 
   void MergeSortCodegen(const CallNode *op);
+
+  void TopKCodegen(const CallNode *op);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 

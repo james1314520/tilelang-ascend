@@ -103,8 +103,8 @@ def merge_sort(dst: Buffer, src: Buffer, block_size, block_num, is_copy):
 
 
 def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):
-    return T.call_extern("handle", f"tl::ascend::TopK<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), tmp.access_ptr("r"), block_size)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_topk"), f"tl::ascend::TopK<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), tmp.access_ptr("r"), block_size)
 
 
 def gather_mask(dst: Buffer, src: Buffer, num):
