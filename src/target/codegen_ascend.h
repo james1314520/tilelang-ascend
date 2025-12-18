@@ -59,6 +59,9 @@ private:
 
   void AddDeclStream(std::ostringstream &ss, const std::string &str);
 
+  void PrintOpCall(const CallNode* op, const std::string& op_name, 
+                  std::pair<int, int> buffer_range, std::pair<int, int> expr_range);
+
   void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
 
   void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
