@@ -70,7 +70,8 @@ def fill(buffer: Buffer, value: PrimExpr):
     # AscendC::Duplicate(ubOut, value, Len);
 
     size = math.prod(buffer.shape)
-    return T.call_extern("handle", f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_fill"), f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
                          value, size)
 
 

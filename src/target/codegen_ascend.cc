@@ -498,12 +498,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     } else if (op_name.find("AscendC::SetFlag") != std::string::npos) {
       this->PrintIndent();
       this->stream << op_name << "(" << PrintExpr(op->args[1]) << ");\n";
-    } else if (op_name.find("Duplicate") != std::string::npos) {
-      this->PrintIndent();
-      auto var_name = print_buffer_offset(op->args[1].as<CallNode>());
-      this->stream << op_name << "(" << var_name << ", "
-                   << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3])
-                   << ");\n";
     } else if (op_name.find("PipeBarrier") != std::string::npos) {
       this->PrintIndent();
       this->stream << op_name << "();\n";
@@ -1051,6 +1045,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     TransposeCodegen(op, "AscendC::Transpose");
   } else if (op->op.same_as(tl::ascend_createvecindex())) {
     CreateVecIndexCodegen(op, "AscendC::CreateVecIndex");
+  } else if (op->op.same_as(tl::ascend_fill())) {
+    FillCodegen(op);
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
   } else {
@@ -1703,6 +1699,15 @@ void CodeGenTileLangAscend::CreateVecIndexCodegen(const CallNode *op, const std:
     this->stream << ", " << PrintExpr(op->args[i]);
   }
   this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::FillCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  this->PrintIndent();
+  auto var_name = PrintBufferOffset(op->args[1].as<CallNode>());
+  this->stream << op_name << "(" << var_name << ", "
+               << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3])
+               << ");\n";
 }
 
 } // namespace codegen

@@ -70,6 +70,8 @@ TVM_DLL const Op &ascend_transpose();
 
 TVM_DLL const Op &ascend_createvecindex();
 
+TVM_DLL const Op &ascend_fill();
+
 } // namespace tl
 } // namespace tvm
 
