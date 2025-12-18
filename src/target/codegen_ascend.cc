@@ -896,63 +896,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ");\n";
 
-    } else if (op_name == "AscendC::Select") {
-      std::vector<std::string> var_names;
-      int para_idx = 0;
-      //For para1:dst, para2:selMask, para3:src0
-      for (int i = 1; i <= 3; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-
-      //For para4:src1_type
-      int src1_type = std::stoi(PrintExpr(op->args[4]));
-      if (src1_type == 0) {
-        if (op->args[5].as<CallNode>()) {
-          auto var_name5 = print_buffer_offset(op->args[5].as<CallNode>(), false);
-          this->PrintIndent();
-          this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
-          this->PrintIndent();
-          this->stream << "auto " << var_name5 << "_scalar = " << var_name5
-                      << ".GetValue(" << PrintExpr(op->args[5])
-                      << ");\n";
-          var_names.push_back(var_name5 + "_scalar");
-        }
-
-        auto var_name6 = Downcast<StringImm>(op->args[6])->value;
-        var_names.push_back(var_name6);
-
-        auto var_name7 = PrintExpr(op->args[7]);
-        var_names.push_back(var_name7);
-      } else if (src1_type == 1) {
-        auto var_name5 = PrintExpr(op->args[5]);
-        var_names.push_back(var_name5);
-
-        auto var_name6 = Downcast<StringImm>(op->args[6])->value;
-        var_names.push_back(var_name6);
-
-        auto var_name7 = PrintExpr(op->args[7]);
-        var_names.push_back(var_name7);
-      } else if (src1_type == 2) {
-        auto var_name5 = print_buffer_offset(op->args[5].as<CallNode>());
-        var_names.push_back(var_name5);
-
-        auto var_name6 = Downcast<StringImm>(op->args[6])->value;
-        var_names.push_back(var_name6);
-
-        auto var_name7 = PrintExpr(op->args[7]);
-        var_names.push_back(var_name7);
-      }
-
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      this->stream << ");\n";
-
     } else if (op_name == "AscendC::BlockReduceMax" || op_name == "AscendC::BlockReduceMin" ||
                op_name == "AscendC::BlockReduceSum") {
       std::vector<std::string> var_names;
@@ -1153,6 +1096,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     UnaryVecOpCodegen(op, "AscendC::Relu");
   } else if (op->op.same_as(tl::ascend_not())) {
     UnaryVecOpCodegen(op, "AscendC::Not");
+  } else if (op->op.same_as(tl::ascend_select())) {
+    SelectCodegen(op, "AscendC::Select");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1660,6 +1605,64 @@ void CodeGenTileLangAscend::UnaryVecOpCodegen(const CallNode *op, const std::str
   }
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                << ");\n";
+}
+
+void CodeGenTileLangAscend::SelectCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  int para_idx = 0;
+  //For para0:dst, para1:selMask, para2:src0
+  for (int i = 0; i <= 2; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+
+  //For para3:src1_type
+  int src1_type = std::stoi(PrintExpr(op->args[3]));
+  if (src1_type == 0) {
+    if (op->args[4].as<CallNode>()) {
+      auto var_name4 = PrintBufferOffset(op->args[4].as<CallNode>(), false);
+      this->PrintIndent();
+      this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
+      this->PrintIndent();
+      this->stream << "auto " << var_name4 << "_scalar = " << var_name4
+                  << ".GetValue(" << PrintExpr(op->args[4])
+                  << ");\n";
+      var_names.push_back(var_name4 + "_scalar");
+    }
+
+    auto var_name5 = Downcast<StringImm>(op->args[5])->value;
+    var_names.push_back(var_name5);
+
+    auto var_name6 = PrintExpr(op->args[6]);
+    var_names.push_back(var_name6);
+  } else if (src1_type == 1) {
+    auto var_name4 = PrintExpr(op->args[4]);
+    var_names.push_back(var_name4);
+
+    auto var_name5 = Downcast<StringImm>(op->args[5])->value;
+    var_names.push_back(var_name5);
+
+    auto var_name6 = PrintExpr(op->args[6]);
+    var_names.push_back(var_name6);
+  } else if (src1_type == 2) {
+    auto var_name4 = PrintBufferOffset(op->args[4].as<CallNode>());
+    var_names.push_back(var_name4);
+
+    auto var_name5 = Downcast<StringImm>(op->args[5])->value;
+    var_names.push_back(var_name5);
+
+    auto var_name6 = PrintExpr(op->args[6]);
+    var_names.push_back(var_name6);
+  }
+
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ");\n";
 }
 
 } // namespace codegen

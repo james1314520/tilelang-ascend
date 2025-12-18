@@ -301,5 +301,10 @@ TIR_DEFINE_TL_BUILTIN(ascend_relu)
 TIR_DEFINE_TL_BUILTIN(ascend_not)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_select)
+    .set_num_inputs(2)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
 } // namespace tl
 } // namespace tvm

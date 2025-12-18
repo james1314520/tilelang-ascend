@@ -171,18 +171,18 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
         src1_type = 0
         buffer_1 = src1.buffer
         indices_1 = src1.indices
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, buffer_1.access_ptr("r"), indices_1[0], sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, buffer_1.access_ptr("r"), indices_1[0], sel_mode, size_0)
     elif isinstance(src1, (PrimExpr, float)):
         assert selMode == "VSEL_TENSOR_SCALAR_MODE", "selMode must be VSEL_TENSOR_SCALAR_MODE"
 
         src1_type = 1
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1, sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1, sel_mode, size_0)
     else:
         assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
 
         src1_type = 2
         src1_ptr = src1.access_ptr("r")
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1_ptr, sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1_ptr, sel_mode, size_0)
 
 
 def init_sort_buf(buffer: Buffer, num, rsv):
