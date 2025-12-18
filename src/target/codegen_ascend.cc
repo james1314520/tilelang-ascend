@@ -543,47 +543,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
-    } else if (op_name.find("GatherMask") != std::string::npos) {
-      // tvm::Dump(op);
-      std::vector<std::string> var_names;
-      for (int i = 1; i < op->args.size() - 1; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
-                   << ");\n";
-    } else if (op_name.find("Gatherb") != std::string::npos) {
-      std::vector<std::string> var_names;
-      for (int i = 1; i < 4; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      this->stream << ", " << PrintExpr(op->args[4])
-                   << ", " << PrintExpr(op->args[5])
-                   << ", " << PrintExpr(op->args[6])
-                   << ");\n";
-    } else if (op_name.find("InitSortBuf") != std::string::npos) {
-      tvm::Dump(op);
-      this->PrintIndent();
-      auto var_name = print_buffer_offset(op->args[1].as<CallNode>());
-      this->stream << op_name << "(" << var_name << ", "
-                   << PrintExpr(op->args[2]) << ");\n";
     } else if (op_name == "AscendC::Gather") {
       this->PrintIndent();
       auto var_name_1 = print_buffer_offset(op->args[1].as<CallNode>());
@@ -990,8 +949,14 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     MergeSortCodegen(op);
   } else if (op->op.same_as(tl::ascend_topk())) {
     TopKCodegen(op);
+  } else if (op->op.same_as(tl::ascend_gather_mask())) {
+    GatherMaskCodegen(op);
+  } else if (op->op.same_as(tl::ascend_gatherb())) {
+    GatherbCodegen(op);
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
+  } else if (op->op.same_as(tl::ascend_init_sort_buf())) {
+    InitSortBufCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1724,6 +1689,54 @@ void CodeGenTileLangAscend::TopKCodegen(const CallNode *op) {
   }
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                << ");\n";
+}
+
+void CodeGenTileLangAscend::GatherMaskCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  std::vector<std::string> var_names;
+  for (int i = 1; i < op->args.size() - 1; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+               << ");\n";
+}
+
+void CodeGenTileLangAscend::GatherbCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  std::vector<std::string> var_names;
+  for (int i = 1; i < 4; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[4])
+               << ", " << PrintExpr(op->args[5])
+               << ", " << PrintExpr(op->args[6])
+               << ");\n";
+}
+
+void CodeGenTileLangAscend::InitSortBufCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  this->PrintIndent();
+  auto var_name = PrintBufferOffset(op->args[1].as<CallNode>());
+  this->stream << op_name << "(" << var_name << ", "
+               << PrintExpr(op->args[2]) << ");\n";
 }
 
 } // namespace codegen

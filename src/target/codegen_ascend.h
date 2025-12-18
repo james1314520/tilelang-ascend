@@ -82,8 +82,14 @@ private:
   void MergeSortCodegen(const CallNode *op);
 
   void TopKCodegen(const CallNode *op);
+
+  void GatherMaskCodegen(const CallNode *op);
+
+  void GatherbCodegen(const CallNode *op);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
+
+  void InitSortBufCodegen(const CallNode *op);
 
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.

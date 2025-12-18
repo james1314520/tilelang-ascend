@@ -108,12 +108,12 @@ def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):
 
 
 def gather_mask(dst: Buffer, src: Buffer, num):
-    return T.call_extern("handle", f"tl::ascend::GatherMask<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), num)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gather_mask"), f"tl::ascend::GatherMask<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), num)
 
 
 def gatherb(dst: Buffer, src0: Buffer, offset: Buffer, repeat_time, dst_blk_stride, dst_rep_stride):
-    return T.call_extern("handle", f"tl::ascend::Gatherb<{_dtype(dst)}>", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gatherb"), f"tl::ascend::Gatherb<{_dtype(dst)}>", dst.access_ptr("w"),
                          src0.access_ptr("r"), offset.access_ptr("r"), repeat_time, dst_blk_stride, dst_rep_stride)
 
 
@@ -188,7 +188,7 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
 
 def init_sort_buf(buffer: Buffer, num, rsv):
     pass
-    return T.call_extern("handle", f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_init_sort_buf"), f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
                          buffer.access_ptr("w"), rsv, num)
 
 
