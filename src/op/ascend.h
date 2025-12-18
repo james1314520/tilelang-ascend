@@ -54,6 +54,10 @@ TVM_DLL const Op &ascend_not();
 
 TVM_DLL const Op &ascend_select();
 
+TVM_DLL const Op &ascend_leaky_relu();
+
+TVM_DLL const Op &ascend_axpy();
+
 } // namespace tl
 } // namespace tvm
 

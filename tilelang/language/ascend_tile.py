@@ -356,22 +356,22 @@ def not_tl(dst: Buffer, src0: Buffer):
     return unary_op(dst, src0, "not")
 
 
-def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op: str):
+def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::{op}<{_dtype(src0)}>", dst.access_ptr("w"), src0.access_ptr("r"),
-                         scalar_value, size_0)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op_tl), f"AscendC::{op_ascend}<{_dtype(src0)}>", 
+                           dst.access_ptr("w"), src0.access_ptr("r"), scalar_value, size_0)
 
 
 def leaky_relu(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
-    return scalar_op(dst, src0, scalar_value, "LeakyRelu")
+    return scalar_op(dst, src0, scalar_value, "LeakyRelu", "leaky_relu")
 
 
 def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
-    return scalar_op(dst, src0, scalar_value, "Axpy")
+    return scalar_op(dst, src0, scalar_value, "Axpy", "axpy")
 
 
 def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):

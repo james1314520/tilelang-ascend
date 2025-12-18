@@ -657,14 +657,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       this->stream << op_name << "(" << var_name << ", "
                    << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3])
                    << ", " << PrintExpr(op->args[4]) << ");\n";
-    } else if (op_name.find("AscendC::LeakyRelu") != std::string::npos ||
-               op_name.find("AscendC::Axpy") != std::string::npos) {
-      this->PrintIndent();
-      auto var_name = print_buffer_offset(op->args[1].as<CallNode>());
-      auto var_name_1 = print_buffer_offset(op->args[2].as<CallNode>());
-      this->stream << op_name << "(" << var_name << ", "
-                   << var_name_1 << "," << PrintExpr(op->args[3])
-                   << ", " << PrintExpr(op->args[4]) << ");\n";
     } else if (op_name == "AscendC::Transpose") {
       std::vector<std::string> var_names;
       for (int i = 1; i < op->args.size(); i++) {
@@ -1098,6 +1090,10 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     UnaryVecOpCodegen(op, "AscendC::Not");
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
+  } else if (op->op.same_as(tl::ascend_leaky_relu())) {
+    ScalarOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_axpy())) {
+    ScalarOpCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1663,6 +1659,16 @@ void CodeGenTileLangAscend::SelectCodegen(const CallNode *op, const std::string&
     }
   }
   this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::ScalarOpCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  this->PrintIndent();
+  auto var_name = PrintBufferOffset(op->args[1].as<CallNode>());
+  auto var_name_1 = PrintBufferOffset(op->args[2].as<CallNode>());
+  this->stream << op_name << "(" << var_name << ", "
+               << var_name_1 << "," << PrintExpr(op->args[3])
+               << ", " << PrintExpr(op->args[4]) << ");\n";
 }
 
 } // namespace codegen

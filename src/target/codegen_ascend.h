@@ -61,7 +61,9 @@ private:
 
   void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
 
-  void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);  
+  void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
+  
+  void ScalarOpCodegen(const CallNode *op);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 
