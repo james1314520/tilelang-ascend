@@ -36,19 +36,7 @@ private:
 };
 
 
-#define ASCEND_BINARY_OP_CLASS(OPNAME)                                          \
-  class Ascend##OPNAME : public Operator {                                      \
-  public:                                                                      \
-    Ascend##OPNAME(Array<PrimExpr> args, BufferMap vmap);                       \
-    static const Op &Get();                                                    \
-                                                                               \
-  private:                                                                     \
-    Buffer src0, src1, dst;                                                    \
-    Array<Range> src0_range, src1_range, dst_range;                            \
-  };
-
-ASCEND_BINARY_OP_CLASS(Add)
-
+TVM_DLL const Op &ascend_exp();
 
 } // namespace tl
 } // namespace tvm

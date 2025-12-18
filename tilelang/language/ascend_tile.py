@@ -1,4 +1,5 @@
 import tilelang.language as T
+from tvm import ir, tir
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Literal
 from tvm import ir, tir
@@ -321,12 +322,11 @@ def unary_op(dst: Buffer, src0: Buffer, op: str):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::{op}", dst.access_ptr("w"), src0.access_ptr("r"),
-                         size_0)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op), dst.access_ptr("w"), src0.access_ptr("r"), size_0)
 
 
 def exp(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Exp")
+    return unary_op(dst, src0, "exp")
 
 
 def ln(dst: Buffer, src0: Buffer):

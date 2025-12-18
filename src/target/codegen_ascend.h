@@ -61,9 +61,7 @@ private:
 
   void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
 
-  bool z00928906(const CallNode *op, std::ostream &os, const std::string& op_name);
-
-  bool h00909914(const CallNode *op, std::ostream &os, const std::string& op_name);
+  void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);  
 
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.
