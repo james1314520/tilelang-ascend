@@ -18,6 +18,9 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 ## Latest News
 
+- 16/12/2025 🚀: Support for developer mode memory op (T.alloc_shared, T.alloc_fragment), check out [Pull Request#129](
+https://github.com/tile-ai/tilelang-ascend/pull/129) for details!
+
 - 9/12/2025 🚀: Support for additional vector ops (VFlip, VLn, VNot, VAbs, VAnd, VOr, VCmp, VPad, VPow, VRec, VRelu, VRSqrt, VSel, VShl, VShr, VXor, VTranspose, VInterleave, VGather)!
 
 - 9/12/2025 🚀: Support compilation based on MLIR APIs and fully replace the previous string-based implementation, providing a robust and extensible compilation process!
