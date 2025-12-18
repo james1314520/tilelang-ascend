@@ -1141,6 +1141,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
   } else if (op->op.same_as(tl::loop_break())) {
     this->PrintIndent();
     this->stream << "break;\n";
+  } else if (op->op.same_as(tl::ascend_add())) {
+    BinaryVecOpCodegen(op, "AscendC::Add");
   } else if (op->op.same_as(tl::ascend_exp())) {
     UnaryVecOpCodegen(op, "AscendC::Exp");
   } else {
@@ -1618,7 +1620,7 @@ void CodeGenTileLangAscend::AddDeclStream(std::ostringstream &ss, const std::str
 
 void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
   std::vector<std::string> var_names;
-  for (int i = 1; i < op->args.size() - 1; i++) {
+  for (int i = 0; i < op->args.size() - 1; i++) {
     auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
     var_names.push_back(var_name);
   }

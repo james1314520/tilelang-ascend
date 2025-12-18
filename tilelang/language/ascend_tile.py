@@ -1,5 +1,4 @@
 import tilelang.language as T
-from tvm import ir, tir
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Literal
 from tvm import ir, tir
@@ -241,12 +240,10 @@ def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferReg
     elif isinstance(src1, (PrimExpr, float)):
         return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
     else:
-        src0_in = _to_region(src0, "r", _get_extent(src0))
-        src1_in = _to_region(src1, "r", _get_extent(src1))
-        dst_in = _to_region(dst, "w", _get_extent(dst))
-        return T.call_intrin("handle", f"tl.ascend_{op}", dst_in, src1_in, src0_in,
-                             size_0)
-
+        # src0_in = _to_region(src0, "r", _get_extent(src0))
+        # src1_in = _to_region(src1, "r", _get_extent(src1))
+        # dst_in = _to_region(dst, "w", _get_extent(dst))
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}"), dst_ptr, src0_ptr, src1.access_ptr("r"), size_0)
 
 def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
               src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
@@ -322,11 +319,12 @@ def unary_op(dst: Buffer, src0: Buffer, op: str):
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op), dst.access_ptr("w"), src0.access_ptr("r"), size_0)
+    return T.call_extern("handle", f"AscendC::{op}", dst.access_ptr("w"), src0.access_ptr("r"),
+                         size_0)
 
 
 def exp(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "exp")
+    return unary_op(dst, src0, "Exp")
 
 
 def ln(dst: Buffer, src0: Buffer):
