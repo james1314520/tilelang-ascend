@@ -78,6 +78,8 @@ private:
   void ArithProgressionCodegen(const CallNode *op);
 
   void SortCodegen(const CallNode *op);
+
+  void MergeSortCodegen(const CallNode *op);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 

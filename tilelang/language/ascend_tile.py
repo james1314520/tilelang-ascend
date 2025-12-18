@@ -98,8 +98,8 @@ def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, re
 
 
 def merge_sort(dst: Buffer, src: Buffer, block_size, block_num, is_copy):
-    return T.call_extern("handle", f"tl::ascend::MergeSort<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), block_size, block_num, is_copy)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_merge_sort"), f"tl::ascend::MergeSort<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), block_size, block_num, is_copy)
 
 
 def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):

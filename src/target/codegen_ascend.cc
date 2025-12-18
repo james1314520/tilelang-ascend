@@ -543,24 +543,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
-    } else if (op_name.find("MergeSort") != std::string::npos) {
-      // vtm::Dump(op);
-      std::vector<std::string> var_names;
-      for (int i = 1; i < op->args.size() - 3; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      this->stream << ", " << PrintExpr(op->args[op->args.size() - 3]) << ", "
-                   << PrintExpr(op->args[op->args.size() - 2]) << ", "
-                   << PrintExpr(op->args[op->args.size() - 1]) << ");\n";
     } else if (op_name.find("TopK") != std::string::npos) {
       // tvm::Dump(op);
       std::vector<std::string> var_names;
@@ -1021,6 +1003,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     ArithProgressionCodegen(op);
   } else if (op->op.same_as(tl::ascend_sort())) {
     SortCodegen(op);
+  } else if (op->op.same_as(tl::ascend_merge_sort())) {
+    MergeSortCodegen(op);
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
   } else {
@@ -1716,6 +1700,26 @@ void CodeGenTileLangAscend::SortCodegen(const CallNode *op) {
   }
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                << ");\n";
+}
+
+void CodeGenTileLangAscend::MergeSortCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  std::vector<std::string> var_names;
+  for (int i = 1; i < op->args.size() - 3; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[op->args.size() - 3]) << ", "
+               << PrintExpr(op->args[op->args.size() - 2]) << ", "
+               << PrintExpr(op->args[op->args.size() - 1]) << ");\n";
 }
 
 } // namespace codegen
