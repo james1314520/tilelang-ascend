@@ -37,6 +37,20 @@ private:
 
 TVM_DLL const Op &ascend_add();
 
+TVM_DLL const Op &ascend_sub();
+
+TVM_DLL const Op &ascend_mul();
+
+TVM_DLL const Op &ascend_div();
+
+TVM_DLL const Op &ascend_max();
+
+TVM_DLL const Op &ascend_min();
+
+TVM_DLL const Op &ascend_and();
+
+TVM_DLL const Op &ascend_or();
+
 TVM_DLL const Op &ascend_exp();
 
 } // namespace tl

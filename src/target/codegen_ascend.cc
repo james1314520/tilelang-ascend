@@ -1143,6 +1143,20 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     this->stream << "break;\n";
   } else if (op->op.same_as(tl::ascend_add())) {
     BinaryVecOpCodegen(op, "AscendC::Add");
+  } else if (op->op.same_as(tl::ascend_sub())) {
+    BinaryVecOpCodegen(op, "AscendC::Sub");
+  } else if (op->op.same_as(tl::ascend_mul())) {
+    BinaryVecOpCodegen(op, "AscendC::Mul");
+  } else if (op->op.same_as(tl::ascend_div())) {
+    BinaryVecOpCodegen(op, "AscendC::Div");
+  } else if (op->op.same_as(tl::ascend_max())) {
+    BinaryVecOpCodegen(op, "AscendC::Max");
+  } else if (op->op.same_as(tl::ascend_min())) {
+    BinaryVecOpCodegen(op, "AscendC::Min");
+  } else if (op->op.same_as(tl::ascend_and())) {
+    BinaryVecOpCodegen(op, "AscendC::And");
+  } else if (op->op.same_as(tl::ascend_or())) {
+    BinaryVecOpCodegen(op, "AscendC::Or");
   } else if (op->op.same_as(tl::ascend_exp())) {
     UnaryVecOpCodegen(op, "AscendC::Exp");
   } else {
