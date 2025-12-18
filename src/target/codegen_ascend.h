@@ -68,6 +68,8 @@ private:
   void ShiftOpCodegen(const CallNode *op, const std::string& op_name);
 
   void TrigOpCodegen(const CallNode *op, const std::string& op_name);
+
+  void TransposeCodegen(const CallNode *op, const std::string& op_name);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 

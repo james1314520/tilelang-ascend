@@ -655,21 +655,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       this->stream << op_name << "(" << var_name << ", "
                    << PrintExpr(op->args[2]) << ", " << PrintExpr(op->args[3])
                    << ", " << PrintExpr(op->args[4]) << ");\n";
-    } else if (op_name == "AscendC::Transpose") {
-      std::vector<std::string> var_names;
-      for (int i = 1; i < op->args.size(); i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      this->stream << ");\n";
     } else if (op_name == "AscendC::Gather") {
       this->PrintIndent();
       auto var_name_1 = print_buffer_offset(op->args[1].as<CallNode>());
@@ -1080,6 +1065,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     TrigOpCodegen(op, "AscendC::Sin");
   } else if (op->op.same_as(tl::ascend_cos())) {
     TrigOpCodegen(op, "AscendC::Cos");
+  } else if (op->op.same_as(tl::ascend_transpose())) {
+    TransposeCodegen(op, "AscendC::Transpose");
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
   } else {
@@ -1695,6 +1682,23 @@ void CodeGenTileLangAscend::TrigOpCodegen(const CallNode *op, const std::string&
   }
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                << ");\n";
+}
+
+void CodeGenTileLangAscend::TransposeCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+    for (int i = 0; i < op->args.size(); i++) {
+      auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+      var_names.push_back(var_name);
+    }
+    this->PrintIndent();
+    this->stream << op_name << "(";
+    for (int i = 0; i < var_names.size(); i++) {
+      this->stream << var_names[i];
+      if (i != var_names.size() - 1) {
+        this->stream << ", ";
+      }
+    }
+    this->stream << ");\n";
 }
 
 } // namespace codegen

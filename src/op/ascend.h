@@ -66,6 +66,8 @@ TVM_DLL const Op &ascend_sin();
 
 TVM_DLL const Op &ascend_cos();
 
+TVM_DLL const Op &ascend_transpose();
+
 } // namespace tl
 } // namespace tvm
 

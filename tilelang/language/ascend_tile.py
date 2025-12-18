@@ -406,7 +406,7 @@ def createvecindex(dst: Buffer, firstValue: PrimExpr):
 
 
 def transpose(dst: Buffer, src: Buffer):
-    return T.call_extern("handle", "AscendC::Transpose", dst.access_ptr("w"), src.access_ptr("r"))
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_transpose"), dst.access_ptr("w"), src.access_ptr("r"))
 
 
 def gather(dst: Buffer, src: Buffer, src_offset: Buffer, src_base_addr: PrimExpr):
