@@ -380,7 +380,7 @@ def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::ShiftLeft", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftleft"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 
@@ -390,7 +390,7 @@ def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::ShiftRight", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftright"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):

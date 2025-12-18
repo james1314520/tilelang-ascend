@@ -64,6 +64,8 @@ private:
   void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
   
   void ScalarOpCodegen(const CallNode *op);
+
+  void ShiftOpCodegen(const CallNode *op, const std::string& op_name);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 

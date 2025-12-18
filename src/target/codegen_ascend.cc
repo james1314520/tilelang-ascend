@@ -701,24 +701,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
-    } else if (op_name == "AscendC::ShiftLeft" || op_name == "AscendC::ShiftRight") {
-      std::vector<std::string> var_names;
-      for (int i = 1; i < 3; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      for (int i = 3; i < op->args.size(); i++) {
-        this->stream << ", " << PrintExpr(op->args[i]);
-      }
-      this->stream << ");\n";
     } else if (op_name == "AscendC::CreateVecIndex") {
       std::vector<std::string> var_names;
       for (int i = 1; i < 2; i++) {
@@ -1088,12 +1070,16 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     UnaryVecOpCodegen(op, "AscendC::Relu");
   } else if (op->op.same_as(tl::ascend_not())) {
     UnaryVecOpCodegen(op, "AscendC::Not");
-  } else if (op->op.same_as(tl::ascend_select())) {
-    SelectCodegen(op, "AscendC::Select");
   } else if (op->op.same_as(tl::ascend_leaky_relu())) {
     ScalarOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_axpy())) {
     ScalarOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_shiftleft())) {
+    ShiftOpCodegen(op, "AscendC::ShiftLeft");
+  } else if (op->op.same_as(tl::ascend_shiftright())) {
+    ShiftOpCodegen(op, "AscendC::ShiftRight");
+  } else if (op->op.same_as(tl::ascend_select())) {
+    SelectCodegen(op, "AscendC::Select");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1669,6 +1655,26 @@ void CodeGenTileLangAscend::ScalarOpCodegen(const CallNode *op) {
   this->stream << op_name << "(" << var_name << ", "
                << var_name_1 << "," << PrintExpr(op->args[3])
                << ", " << PrintExpr(op->args[4]) << ");\n";
+}
+
+void CodeGenTileLangAscend::ShiftOpCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 0; i < 2; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  for (int i = 2; i < op->args.size(); i++) {
+    this->stream << ", " << PrintExpr(op->args[i]);
+  }
+  this->stream << ");\n";
 }
 
 } // namespace codegen
