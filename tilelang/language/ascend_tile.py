@@ -401,7 +401,8 @@ def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
 
 def createvecindex(dst: Buffer, firstValue: PrimExpr):
     calCount = math.prod(dst.shape)
-    return T.call_extern("handle", f"AscendC::CreateVecIndex", dst.access_ptr("w"),
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_createvecindex"), dst.access_ptr("w"),
                          firstValue, calCount)
 
 

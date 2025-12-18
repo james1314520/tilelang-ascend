@@ -333,5 +333,9 @@ TIR_DEFINE_TL_BUILTIN(ascend_cos)
 TIR_DEFINE_TL_BUILTIN(ascend_transpose)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_createvecindex)
+    .set_num_inputs(2)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 } // namespace tl
 } // namespace tvm

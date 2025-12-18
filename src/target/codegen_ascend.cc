@@ -684,24 +684,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
-    } else if (op_name == "AscendC::CreateVecIndex") {
-      std::vector<std::string> var_names;
-      for (int i = 1; i < 2; i++) {
-        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
-        var_names.push_back(var_name);
-      }
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (int i = 0; i < var_names.size(); i++) {
-        this->stream << var_names[i];
-        if (i != var_names.size() - 1) {
-          this->stream << ", ";
-        }
-      }
-      for (int i = 2; i < op->args.size(); i++) {
-        this->stream << ", " << PrintExpr(op->args[i]);
-      }
-      this->stream << ");\n";
     } else if (op_name == "AscendC::Muls" || op_name == "AscendC::Adds") {
       std::vector<std::string> var_names;
       for (int i = 1; i < 3; i++) {
@@ -1067,6 +1049,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     TrigOpCodegen(op, "AscendC::Cos");
   } else if (op->op.same_as(tl::ascend_transpose())) {
     TransposeCodegen(op, "AscendC::Transpose");
+  } else if (op->op.same_as(tl::ascend_createvecindex())) {
+    CreateVecIndexCodegen(op, "AscendC::CreateVecIndex");
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
   } else {
@@ -1686,19 +1670,39 @@ void CodeGenTileLangAscend::TrigOpCodegen(const CallNode *op, const std::string&
 
 void CodeGenTileLangAscend::TransposeCodegen(const CallNode *op, const std::string& op_name) {
   std::vector<std::string> var_names;
-    for (int i = 0; i < op->args.size(); i++) {
-      auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
-      var_names.push_back(var_name);
+  for (int i = 0; i < op->args.size(); i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
     }
-    this->PrintIndent();
-    this->stream << op_name << "(";
-    for (int i = 0; i < var_names.size(); i++) {
-      this->stream << var_names[i];
-      if (i != var_names.size() - 1) {
-        this->stream << ", ";
-      }
+  }
+  this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::CreateVecIndexCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 0; i < 1; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
     }
-    this->stream << ");\n";
+  }
+  for (int i = 1; i < op->args.size(); i++) {
+    this->stream << ", " << PrintExpr(op->args[i]);
+  }
+  this->stream << ");\n";
 }
 
 } // namespace codegen
