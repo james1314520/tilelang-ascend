@@ -503,7 +503,7 @@ def sin(dst: Buffer, src: Buffer, tmp: Buffer):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::Sin", dst.access_ptr("w"), src.access_ptr("r"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sin"), dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 
 
@@ -513,6 +513,6 @@ def cos(dst: Buffer, src: Buffer, tmp: Buffer):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::Cos", dst.access_ptr("w"), src.access_ptr("r"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_cos"), dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 

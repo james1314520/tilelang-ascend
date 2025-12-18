@@ -590,9 +590,7 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       }
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
-    } else if (op_name.find("TopK") != std::string::npos ||
-               op_name.find("AscendC::Sin") != std::string::npos ||
-               op_name.find("AscendC::Cos") != std::string::npos) {
+    } else if (op_name.find("TopK") != std::string::npos) {
       // tvm::Dump(op);
       std::vector<std::string> var_names;
       for (int i = 1; i < op->args.size() - 1; i++) {
@@ -1078,6 +1076,10 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     ShiftOpCodegen(op, "AscendC::ShiftLeft");
   } else if (op->op.same_as(tl::ascend_shiftright())) {
     ShiftOpCodegen(op, "AscendC::ShiftRight");
+  } else if (op->op.same_as(tl::ascend_sin())) {
+    TrigOpCodegen(op, "AscendC::Sin");
+  } else if (op->op.same_as(tl::ascend_cos())) {
+    TrigOpCodegen(op, "AscendC::Cos");
   } else if (op->op.same_as(tl::ascend_select())) {
     SelectCodegen(op, "AscendC::Select");
   } else {
@@ -1675,6 +1677,24 @@ void CodeGenTileLangAscend::ShiftOpCodegen(const CallNode *op, const std::string
     this->stream << ", " << PrintExpr(op->args[i]);
   }
   this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::TrigOpCodegen(const CallNode *op, const std::string& op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 0; i < op->args.size() - 1; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+               << ");\n";
 }
 
 } // namespace codegen
