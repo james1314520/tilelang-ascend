@@ -76,8 +76,8 @@ def fill(buffer: Buffer, value: PrimExpr):
 
 
 def arith_progression(buffer: Buffer, first_value, diff_value, count):
-    return T.call_extern("handle", f"AscendC::ArithProgression<{_dtype(buffer)}>",
-                         buffer.access_ptr("w"), first_value, diff_value, count)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_arith_progression"), f"AscendC::ArithProgression<{_dtype(buffer)}>",
+                           buffer.access_ptr("w"), first_value, diff_value, count)
 
 
 def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, repeat_time):
@@ -288,7 +288,7 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
                              size_0)
 
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op_v1(dst, src0, src1, "add")
+    return binary_op(dst, src0, src1, "Add")
 
 
 def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):

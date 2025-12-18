@@ -72,6 +72,8 @@ TVM_DLL const Op &ascend_createvecindex();
 
 TVM_DLL const Op &ascend_fill();
 
+TVM_DLL const Op &ascend_arith_progression();
+
 } // namespace tl
 } // namespace tvm
 

@@ -74,6 +74,8 @@ private:
   void CreateVecIndexCodegen(const CallNode *op, const std::string& op_name);
 
   void FillCodegen(const CallNode *op);
+
+  void ArithProgressionCodegen(const CallNode *op);
   
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 
