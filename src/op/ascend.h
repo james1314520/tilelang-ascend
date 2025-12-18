@@ -74,6 +74,8 @@ TVM_DLL const Op &ascend_fill();
 
 TVM_DLL const Op &ascend_arith_progression();
 
+TVM_DLL const Op &ascend_sort();
+
 } // namespace tl
 } // namespace tvm
 

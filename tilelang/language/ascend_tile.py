@@ -92,7 +92,7 @@ def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, re
     if isinstance(dst, BufferRegion):
         dst_ptr, dst_extent = _handle_buffer_region(dst, "w")
         dst_size = math.prod(dst_extent)
-        return T.call_extern("handle", f"AscendC::Sort<{_dtype(dst)}, true>", dst_ptr,
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sort"), f"AscendC::Sort<{_dtype(dst)}, true>", dst_ptr,
                              src.access_ptr("r"), indices.access_ptr("r"),
                              tmp_buffer.access_ptr("r"), dst_size, repeat_time)
 

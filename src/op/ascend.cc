@@ -345,5 +345,9 @@ TIR_DEFINE_TL_BUILTIN(ascend_fill)
 TIR_DEFINE_TL_BUILTIN(ascend_arith_progression)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_sort)
+    .set_num_inputs(2)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 } // namespace tl
 } // namespace tvm
