@@ -51,6 +51,14 @@ TVM_DLL const Op &ascend_and();
 
 TVM_DLL const Op &ascend_or();
 
+TVM_DLL const Op &ascend_adds();
+
+TVM_DLL const Op &ascend_subs();
+
+TVM_DLL const Op &ascend_muls();
+
+TVM_DLL const Op &ascend_divs();
+
 TVM_DLL const Op &ascend_exp();
 
 } // namespace tl

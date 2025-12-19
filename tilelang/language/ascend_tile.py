@@ -234,11 +234,14 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
         buffer_1 = src1.buffer
         indices_1 = src1.indices
         # we only can pass the extra index
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
+        # return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
+        #                      buffer_1.access_ptr("r"), indices_1[0], size_0)
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr,
                              buffer_1.access_ptr("r"), indices_1[0], size_0)
 
     elif isinstance(src1, (PrimExpr, float)):
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
+        #return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0)
     else:
         return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}"), dst_ptr, src0_ptr, src1.access_ptr("r"), size_0)
 
