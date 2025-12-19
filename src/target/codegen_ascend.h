@@ -59,9 +59,40 @@ private:
 
   void AddDeclStream(std::ostringstream &ss, const std::string &str);
 
+  void PrintOpCall(const CallNode* op, const std::string& op_name, 
+                  std::pair<int, int> buffer_range, std::pair<int, int> expr_range);
+
   void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
 
   void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
+  
+  void ScalarOpCodegen(const CallNode *op);
+
+  void ShiftOpCodegen(const CallNode *op, const std::string& op_name);
+
+  void TrigOpCodegen(const CallNode *op, const std::string& op_name);
+
+  void TransposeCodegen(const CallNode *op, const std::string& op_name);
+
+  void CreateVecIndexCodegen(const CallNode *op, const std::string& op_name);
+
+  void FillCodegen(const CallNode *op);
+
+  void ArithProgressionCodegen(const CallNode *op);
+
+  void SortCodegen(const CallNode *op);
+
+  void MergeSortCodegen(const CallNode *op);
+
+  void TopKCodegen(const CallNode *op);
+
+  void GatherMaskCodegen(const CallNode *op);
+
+  void GatherbCodegen(const CallNode *op);
+  
+  void SelectCodegen(const CallNode *op, const std::string& op_name);
+
+  void InitSortBufCodegen(const CallNode *op);
 
   void AddsAndMulsOpCodegen(const CallNode *op, const std::string& op_name);
 

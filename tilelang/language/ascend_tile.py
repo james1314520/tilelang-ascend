@@ -69,13 +69,14 @@ def fill(buffer: Buffer, value: PrimExpr):
     # AscendC::Duplicate(ubOut, value, Len);
 
     size = math.prod(buffer.shape)
-    return T.call_extern("handle", f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_fill"), f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
                          value, size)
 
 
 def arith_progression(buffer: Buffer, first_value, diff_value, count):
-    return T.call_extern("handle", f"AscendC::ArithProgression<{_dtype(buffer)}>",
-                         buffer.access_ptr("w"), first_value, diff_value, count)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_arith_progression"), f"AscendC::ArithProgression<{_dtype(buffer)}>",
+                           buffer.access_ptr("w"), first_value, diff_value, count)
 
 
 def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, repeat_time):
@@ -90,28 +91,28 @@ def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, re
     if isinstance(dst, BufferRegion):
         dst_ptr, dst_extent = _handle_buffer_region(dst, "w")
         dst_size = math.prod(dst_extent)
-        return T.call_extern("handle", f"AscendC::Sort<{_dtype(dst)}, true>", dst_ptr,
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sort"), f"AscendC::Sort<{_dtype(dst)}, true>", dst_ptr,
                              src.access_ptr("r"), indices.access_ptr("r"),
                              tmp_buffer.access_ptr("r"), dst_size, repeat_time)
 
 
 def merge_sort(dst: Buffer, src: Buffer, block_size, block_num, is_copy):
-    return T.call_extern("handle", f"tl::ascend::MergeSort<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), block_size, block_num, is_copy)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_merge_sort"), f"tl::ascend::MergeSort<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), block_size, block_num, is_copy)
 
 
 def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):
-    return T.call_extern("handle", f"tl::ascend::TopK<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), tmp.access_ptr("r"), block_size)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_topk"), f"tl::ascend::TopK<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), tmp.access_ptr("r"), block_size)
 
 
 def gather_mask(dst: Buffer, src: Buffer, num):
-    return T.call_extern("handle", f"tl::ascend::GatherMask<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src.access_ptr("r"), num)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gather_mask"), f"tl::ascend::GatherMask<{_dtype(dst)}>",
+                           dst.access_ptr("w"), src.access_ptr("r"), num)
 
 
 def gatherb(dst: Buffer, src0: Buffer, offset: Buffer, repeat_time, dst_blk_stride, dst_rep_stride):
-    return T.call_extern("handle", f"tl::ascend::Gatherb<{_dtype(dst)}>", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gatherb"), f"tl::ascend::Gatherb<{_dtype(dst)}>", dst.access_ptr("w"),
                          src0.access_ptr("r"), offset.access_ptr("r"), repeat_time, dst_blk_stride, dst_rep_stride)
 
 
@@ -170,23 +171,23 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
         src1_type = 0
         buffer_1 = src1.buffer
         indices_1 = src1.indices
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, buffer_1.access_ptr("r"), indices_1[0], sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, buffer_1.access_ptr("r"), indices_1[0], sel_mode, size_0)
     elif isinstance(src1, (PrimExpr, float)):
         assert selMode == "VSEL_TENSOR_SCALAR_MODE", "selMode must be VSEL_TENSOR_SCALAR_MODE"
 
         src1_type = 1
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1, sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1, sel_mode, size_0)
     else:
         assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
 
         src1_type = 2
         src1_ptr = src1.access_ptr("r")
-        return T.call_extern("handle", f"AscendC::Select", dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1_ptr, sel_mode, size_0)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1_ptr, sel_mode, size_0)
 
 
 def init_sort_buf(buffer: Buffer, num, rsv):
     pass
-    return T.call_extern("handle", f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_init_sort_buf"), f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
                          buffer.access_ptr("w"), rsv, num)
 
 
@@ -319,57 +320,56 @@ def unary_op(dst: Buffer, src0: Buffer, op: str):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::{op}", dst.access_ptr("w"), src0.access_ptr("r"),
-                         size_0)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op), dst.access_ptr("w"), src0.access_ptr("r"), size_0)
 
 
 def exp(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Exp")
+    return unary_op(dst, src0, "exp")
 
 
 def ln(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Ln")
+    return unary_op(dst, src0, "ln")
 
 
 def abs(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Abs")
+    return unary_op(dst, src0, "abs")
 
 
 def reciprocal(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Reciprocal")
+    return unary_op(dst, src0, "reciprocal")
 
 
 def sqrt(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Sqrt")
+    return unary_op(dst, src0, "sqrt")
 
 
 def rsqrt(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Rsqrt")
+    return unary_op(dst, src0, "rsqrt")
 
 
 def relu(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Relu")
+    return unary_op(dst, src0, "relu")
 
 def not_tl(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "Not")
+    return unary_op(dst, src0, "not")
 
 
-def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op: str):
+def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::{op}<{_dtype(src0)}>", dst.access_ptr("w"), src0.access_ptr("r"),
-                         scalar_value, size_0)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op_tl), f"AscendC::{op_ascend}<{_dtype(src0)}>", 
+                           dst.access_ptr("w"), src0.access_ptr("r"), scalar_value, size_0)
 
 
 def leaky_relu(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
-    return scalar_op(dst, src0, scalar_value, "LeakyRelu")
+    return scalar_op(dst, src0, scalar_value, "LeakyRelu", "leaky_relu")
 
 
 def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
-    return scalar_op(dst, src0, scalar_value, "Axpy")
+    return scalar_op(dst, src0, scalar_value, "Axpy", "axpy")
 
 
 def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
@@ -378,7 +378,7 @@ def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::ShiftLeft", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftleft"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 
@@ -388,7 +388,7 @@ def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::ShiftRight", dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftright"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
@@ -399,12 +399,13 @@ def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
 
 def createvecindex(dst: Buffer, firstValue: PrimExpr):
     calCount = math.prod(dst.shape)
-    return T.call_extern("handle", f"AscendC::CreateVecIndex", dst.access_ptr("w"),
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_createvecindex"), dst.access_ptr("w"),
                          firstValue, calCount)
 
 
 def transpose(dst: Buffer, src: Buffer):
-    return T.call_extern("handle", "AscendC::Transpose", dst.access_ptr("w"), src.access_ptr("r"))
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_transpose"), dst.access_ptr("w"), src.access_ptr("r"))
 
 
 def gather(dst: Buffer, src: Buffer, src_offset: Buffer, src_base_addr: PrimExpr):
@@ -501,7 +502,7 @@ def sin(dst: Buffer, src: Buffer, tmp: Buffer):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::Sin", dst.access_ptr("w"), src.access_ptr("r"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sin"), dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 
 
@@ -511,6 +512,6 @@ def cos(dst: Buffer, src: Buffer, tmp: Buffer):
 
     assert size_0 == size_2, "size must be same"
 
-    return T.call_extern("handle", f"AscendC::Cos", dst.access_ptr("w"), src.access_ptr("r"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_cos"), dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 

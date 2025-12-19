@@ -61,6 +61,54 @@ TVM_DLL const Op &ascend_divs();
 
 TVM_DLL const Op &ascend_exp();
 
+TVM_DLL const Op &ascend_ln();
+
+TVM_DLL const Op &ascend_abs();
+
+TVM_DLL const Op &ascend_reciprocal();
+
+TVM_DLL const Op &ascend_sqrt();
+
+TVM_DLL const Op &ascend_rsqrt();
+
+TVM_DLL const Op &ascend_relu();
+
+TVM_DLL const Op &ascend_not();
+
+TVM_DLL const Op &ascend_select();
+
+TVM_DLL const Op &ascend_leaky_relu();
+
+TVM_DLL const Op &ascend_axpy();
+
+TVM_DLL const Op &ascend_shiftleft();
+
+TVM_DLL const Op &ascend_shiftright();
+
+TVM_DLL const Op &ascend_sin();
+
+TVM_DLL const Op &ascend_cos();
+
+TVM_DLL const Op &ascend_transpose();
+
+TVM_DLL const Op &ascend_createvecindex();
+
+TVM_DLL const Op &ascend_fill();
+
+TVM_DLL const Op &ascend_arith_progression();
+
+TVM_DLL const Op &ascend_sort();
+
+TVM_DLL const Op &ascend_merge_sort();
+
+TVM_DLL const Op &ascend_topk();
+
+TVM_DLL const Op &ascend_gather_mask();
+
+TVM_DLL const Op &ascend_gatherb();
+
+TVM_DLL const Op &ascend_init_sort_buf();
+
 } // namespace tl
 } // namespace tvm
 
