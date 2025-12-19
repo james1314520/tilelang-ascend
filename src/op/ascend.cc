@@ -346,7 +346,7 @@ TIR_DEFINE_TL_BUILTIN(ascend_relu)
     .set_num_inputs(3)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
-TIR_DEFINE_TL_BUILTIN(ascend_not)
+TIR_DEFINE_TL_BUILTIN(ascend_bitwise_not)
     .set_num_inputs(3)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
@@ -362,11 +362,11 @@ TIR_DEFINE_TL_BUILTIN(ascend_axpy)
     .set_num_inputs(5)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
-TIR_DEFINE_TL_BUILTIN(ascend_shiftleft)
+TIR_DEFINE_TL_BUILTIN(ascend_bitwise_lshift)
     .set_num_inputs(4)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
-TIR_DEFINE_TL_BUILTIN(ascend_shiftright)
+TIR_DEFINE_TL_BUILTIN(ascend_bitwise_rshift)
     .set_num_inputs(4)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 

@@ -73,7 +73,7 @@ TVM_DLL const Op &ascend_rsqrt();
 
 TVM_DLL const Op &ascend_relu();
 
-TVM_DLL const Op &ascend_not();
+TVM_DLL const Op &ascend_bitwise_not();
 
 TVM_DLL const Op &ascend_select();
 
@@ -81,9 +81,9 @@ TVM_DLL const Op &ascend_leaky_relu();
 
 TVM_DLL const Op &ascend_axpy();
 
-TVM_DLL const Op &ascend_shiftleft();
+TVM_DLL const Op &ascend_bitwise_lshift();
 
-TVM_DLL const Op &ascend_shiftright();
+TVM_DLL const Op &ascend_bitwise_rshift();
 
 TVM_DLL const Op &ascend_sin();
 
