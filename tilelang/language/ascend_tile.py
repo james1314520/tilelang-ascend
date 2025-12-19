@@ -1,5 +1,4 @@
 import tilelang.language as T
-from tvm import ir, tir
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Literal
 from tvm import ir, tir
@@ -207,7 +206,7 @@ def brcb(dst: Buffer, src: Buffer, repeat_times: PrimExpr, dst_blk_stride: PrimE
                          repeat_times, dst_blk_stride, dst_repeat_stride)
 
 
-def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
+def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
               src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
 
     def _handle_buffer_region(br: BufferRegion, mask):
@@ -236,20 +235,18 @@ def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferReg
         buffer_1 = src1.buffer
         indices_1 = src1.indices
         # we only can pass the extra index
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
+        # return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
+        #                      buffer_1.access_ptr("r"), indices_1[0], size_0)
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr,
                              buffer_1.access_ptr("r"), indices_1[0], size_0)
 
     elif isinstance(src1, (PrimExpr, float)):
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
+        #return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0)
     else:
-        src0_in = _to_region(src0, "r", _get_extent(src0))
-        src1_in = _to_region(src1, "r", _get_extent(src1))
-        dst_in = _to_region(dst, "w", _get_extent(dst))
-        return T.call_intrin("handle", f"tl.ascend_{op}", dst_in, src1_in, src0_in,
-                             size_0)
+        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}"), dst_ptr, src0_ptr, src1.access_ptr("r"), size_0)
 
-
-def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
+def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
               src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
 
     def _handle_buffer_region(br: BufferRegion, mask):
@@ -288,33 +285,33 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
                              size_0)
 
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "Add")
+    return binary_op(dst, src0, src1, "add")
 
 
 def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
-    return binary_op(dst, src0, src1, "Sub")
+    return binary_op(dst, src0, src1, "sub")
 
 
 def mul(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "Mul")
+    return binary_op(dst, src0, src1, "mul")
 
 
 def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
-    return binary_op(dst, src0, src1, "Div")
+    return binary_op(dst, src0, src1, "div")
 
 
 def max(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
-    return binary_op(dst, src0, src1, "Max")
+    return binary_op(dst, src0, src1, "max")
 
 
 def min(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
-    return binary_op(dst, src0, src1, "Min")
+    return binary_op(dst, src0, src1, "min")
 
 def and_tl(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "And")
+    return binary_op(dst, src0, src1, "and")
 
 def or_tl(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "Or")
+    return binary_op(dst, src0, src1, "or")
 
 
 def unary_op(dst: Buffer, src0: Buffer, op: str):

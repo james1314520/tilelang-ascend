@@ -907,6 +907,30 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
   } else if (op->op.same_as(tl::loop_break())) {
     this->PrintIndent();
     this->stream << "break;\n";
+  } else if (op->op.same_as(tl::ascend_add())) {
+    BinaryVecOpCodegen(op, "AscendC::Add");
+  } else if (op->op.same_as(tl::ascend_sub())) {
+    BinaryVecOpCodegen(op, "AscendC::Sub");
+  } else if (op->op.same_as(tl::ascend_mul())) {
+    BinaryVecOpCodegen(op, "AscendC::Mul");
+  } else if (op->op.same_as(tl::ascend_div())) {
+    BinaryVecOpCodegen(op, "AscendC::Div");
+  } else if (op->op.same_as(tl::ascend_max())) {
+    BinaryVecOpCodegen(op, "AscendC::Max");
+  } else if (op->op.same_as(tl::ascend_min())) {
+    BinaryVecOpCodegen(op, "AscendC::Min");
+  } else if (op->op.same_as(tl::ascend_and())) {
+    BinaryVecOpCodegen(op, "AscendC::And");
+  } else if (op->op.same_as(tl::ascend_or())) {
+    BinaryVecOpCodegen(op, "AscendC::Or");
+  } else if (op->op.same_as(tl::ascend_adds())) {
+    AddsAndMulsOpCodegen(op, "AscendC::Adds");
+  } else if (op->op.same_as(tl::ascend_subs())) {
+    SubsOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_muls())) {
+    AddsAndMulsOpCodegen(op, "AscendC::Muls");
+  } else if (op->op.same_as(tl::ascend_divs())) {
+    DivsOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_exp())) {
     UnaryVecOpCodegen(op, "AscendC::Exp");
   } else if (op->op.same_as(tl::ascend_ln())) {
@@ -1455,7 +1479,7 @@ void CodeGenTileLangAscend::PrintOpCall(const CallNode* op, const std::string& o
 
 void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
   std::vector<std::string> var_names;
-  for (int i = 1; i < op->args.size() - 1; i++) {
+  for (int i = 0; i < op->args.size() - 1; i++) {
     auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
     var_names.push_back(var_name);
   }
@@ -1588,6 +1612,132 @@ void CodeGenTileLangAscend::SortCodegen(const CallNode *op) {
   }
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                << ");\n";
+}
+
+void CodeGenTileLangAscend::MergeSortCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  int len = op->args.size();
+  PrintOpCall(op, op_name, {1, len - 3}, {len - 3, len});
+}
+
+void CodeGenTileLangAscend::TopKCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  int len = op->args.size();
+  PrintOpCall(op, op_name, {1, len - 1}, {len - 1, len});
+}
+
+void CodeGenTileLangAscend::GatherMaskCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  int len = op->args.size();
+  PrintOpCall(op, op_name, {1, len - 1}, {len - 1, len});
+}
+
+void CodeGenTileLangAscend::GatherbCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  PrintOpCall(op, op_name, {1, 4}, {4, 7});
+}
+
+void CodeGenTileLangAscend::InitSortBufCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  PrintOpCall(op, op_name, {1, 2}, {2, 3});
+void CodeGenTileLangAscend::AddsAndMulsOpCodegen(const CallNode *op, const std::string& op_name){
+      std::vector<std::string> var_names;
+      for (int i = 0; i < 2; i++) {
+        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
+        var_names.push_back(var_name);
+      }
+
+      if (op->args[2].as<CallNode>()) {
+        auto var_name = print_buffer_offset(op->args[2].as<CallNode>(), false);
+        this->PrintIndent();
+        this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
+        this->PrintIndent();
+        this->stream << "auto " << var_name << "_scalar = " << var_name
+                     << ".GetValue(" << PrintExpr(op->args[op->args.size() - 2])
+                     << ");\n";
+        var_names.push_back(var_name + "_scalar");
+      } else {
+        var_names.push_back(PrintExpr(op->args[op->args.size() - 2]));
+      }
+      this->PrintIndent();
+      this->stream << op_name << "(";
+      for (int i = 0; i < var_names.size(); i++) {
+        this->stream << var_names[i];
+        if (i != var_names.size() - 1) {
+          this->stream << ", ";
+        }
+      }
+
+      this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+                   << ");\n";
+}
+
+void CodeGenTileLangAscend::SubsOpCodegen(const CallNode *op){
+      std::vector<std::string> var_names;
+      for (int i = 0; i < 2; i++) {
+        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
+        var_names.push_back(var_name);
+      }
+
+      if (op->args[2].as<CallNode>()) {
+        auto var_name = print_buffer_offset(op->args[2].as<CallNode>(), false);
+
+        this->PrintIndent();
+        this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
+        this->PrintIndent();
+        this->stream << "auto " << var_name << "_scalar = " << var_name
+                     << ".GetValue(" << PrintExpr(op->args[op->args.size() - 2])
+                     << ");\n";
+        var_names.push_back("- " + var_name + "_scalar");
+      } else {
+        var_names.push_back(PrintExpr(op->args[op->args.size() - 2]));
+      }
+      this->PrintIndent();
+      this->stream << "AscendC::Adds"
+                   << "(";
+      for (int i = 0; i < var_names.size(); i++) {
+        this->stream << var_names[i];
+        if (i != var_names.size() - 1) {
+          this->stream << ", ";
+        }
+      }
+
+      this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+                   << ");\n";
+}
+
+void CodeGenTileLangAscend::DivsOpCodegen(const CallNode *op){
+      std::vector<std::string> var_names;
+      for (int i = 0; i < 2; i++) {
+        auto var_name = print_buffer_offset(op->args[i].as<CallNode>());
+        var_names.push_back(var_name);
+      }
+
+      if (op->args[2].as<CallNode>()) {
+        auto var_name = print_buffer_offset(op->args[2].as<CallNode>(), false);
+
+        this->PrintIndent();
+        this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
+        this->PrintIndent();
+        this->stream << "auto " << var_name << "_scalar = 1.0f / " << var_name
+                     << ".GetValue(" << PrintExpr(op->args[op->args.size() - 2])
+                     << ");\n";
+        var_names.push_back(var_name + "_scalar");
+      } else {
+        var_names.push_back(PrintExpr(op->args[op->args.size() - 2]));
+      }
+      this->PrintIndent();
+      this->stream << "AscendC::Muls"
+                   << "(";
+      for (int i = 0; i < var_names.size(); i++) {
+        this->stream << var_names[i];
+        if (i != var_names.size() - 1) {
+          this->stream << ", ";
+        }
+      }
+
+      this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
+                   << ");\n";
 }
 
 void CodeGenTileLangAscend::MergeSortCodegen(const CallNode *op) {

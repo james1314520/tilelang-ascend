@@ -35,6 +35,29 @@ private:
   bool enRelu;
 };
 
+TVM_DLL const Op &ascend_add();
+
+TVM_DLL const Op &ascend_sub();
+
+TVM_DLL const Op &ascend_mul();
+
+TVM_DLL const Op &ascend_div();
+
+TVM_DLL const Op &ascend_max();
+
+TVM_DLL const Op &ascend_min();
+
+TVM_DLL const Op &ascend_and();
+
+TVM_DLL const Op &ascend_or();
+
+TVM_DLL const Op &ascend_adds();
+
+TVM_DLL const Op &ascend_subs();
+
+TVM_DLL const Op &ascend_muls();
+
+TVM_DLL const Op &ascend_divs();
 
 TVM_DLL const Op &ascend_exp();
 

@@ -94,6 +94,12 @@ private:
 
   void InitSortBufCodegen(const CallNode *op);
 
+  void AddsAndMulsOpCodegen(const CallNode *op, const std::string& op_name);
+
+  void SubsOpCodegen(const CallNode *op);
+
+  void DivsOpCodegen(const CallNode *op);
+
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.
   bool IsScopePartOfType() const final { return false; }

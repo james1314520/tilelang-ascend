@@ -28,7 +28,7 @@ using namespace tir;
   TVM_REGISTER_OP("tl." #OpName)                                               \
       .set_attr<TScriptPrinterName>("TScriptPrinterName", #OpName)
 
-      
+
 AscendCopy::AscendCopy(Array<PrimExpr> args, BufferMap vmap) : args_(args) {
   Array<Range> rgs[2];
   Buffer bf[2];
@@ -269,6 +269,54 @@ TIR_REGISTER_TL_OP(AscendCopy, ascend_copy)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_add)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_sub)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_mul)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_div)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_max)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_min)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_and)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_or)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_adds)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_subs)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_muls)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_divs)
+    .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
 TIR_DEFINE_TL_BUILTIN(ascend_exp)
     .set_num_inputs(2)
