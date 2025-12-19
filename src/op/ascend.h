@@ -109,6 +109,22 @@ TVM_DLL const Op &ascend_gatherb();
 
 TVM_DLL const Op &ascend_init_sort_buf();
 
+TVM_DLL const Op &ascend_sort32();
+
+TVM_DLL const Op &ascend_gather();
+
+TVM_DLL const Op &ascend_reduce();
+
+TVM_DLL const Op &ascend_block_reduce_max();
+
+TVM_DLL const Op &ascend_block_reduce_min();
+
+TVM_DLL const Op &ascend_block_reduce_sum();
+
+TVM_DLL const Op &ascend_cast();
+
+TVM_DLL const Op &ascend_set_deq_scale();
+
 } // namespace tl
 } // namespace tvm
 

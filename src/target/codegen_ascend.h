@@ -59,13 +59,13 @@ private:
 
   void AddDeclStream(std::ostringstream &ss, const std::string &str);
 
-  void PrintOpCall(const CallNode* op, const std::string& op_name, 
+  void PrintOpCall(const CallNode* op, const std::string& op_name,
                   std::pair<int, int> buffer_range, std::pair<int, int> expr_range);
 
   void BinaryVecOpCodegen(const CallNode* op, const std::string& op_name);
 
   void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
-  
+
   void ScalarOpCodegen(const CallNode *op);
 
   void ShiftOpCodegen(const CallNode *op, const std::string& op_name);
@@ -89,7 +89,7 @@ private:
   void GatherMaskCodegen(const CallNode *op);
 
   void GatherbCodegen(const CallNode *op);
-  
+
   void SelectCodegen(const CallNode *op, const std::string& op_name);
 
   void InitSortBufCodegen(const CallNode *op);
@@ -99,6 +99,18 @@ private:
   void SubsOpCodegen(const CallNode *op);
 
   void DivsOpCodegen(const CallNode *op);
+
+  void Sort32Codegen(const CallNode *op, const std::string& op_name);
+
+  void GatherCodegen(const CallNode *op, const std::string& op_name);
+
+  void ReduceOpCodegen(const CallNode *op);
+
+  void BlockReduceOpCodegen(const CallNode *op, const std::string& op_name);
+
+  void CastCodegen(const CallNode *op, const std::string& op_name);
+
+  void SetDeqScaleCodegen(const CallNode *op, const std::string& op_name);
 
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.

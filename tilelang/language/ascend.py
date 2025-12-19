@@ -1,6 +1,7 @@
 import tilelang.language as T
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Literal
+from tvm import ir, tir
 import numpy as np
 
 import math
@@ -248,3 +249,7 @@ def dump_tensor(tensor: Buffer, desc: int, dump_size: int, shape_info: tuple=())
         return T.call_extern("handle", f"AscendC::DumpTensor", tensor_ptr, desc, dump_size)
     else:
         return T.call_extern("handle", f"tl::ascend::DumpTensor", tensor_ptr, desc, dump_size, len(shape_info), *shape_info)
+
+
+def set_deq_scale(scale: PrimExpr):
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_set_deq_scale"), scale)

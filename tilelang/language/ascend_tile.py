@@ -360,7 +360,7 @@ def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str,
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op_tl), f"AscendC::{op_ascend}<{_dtype(src0)}>", 
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op_tl), f"AscendC::{op_ascend}<{_dtype(src0)}>",
                            dst.access_ptr("w"), src0.access_ptr("r"), scalar_value, size_0)
 
 
@@ -393,7 +393,7 @@ def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
     repeatTimes = math.prod(src0.shape) // 32
-    return T.call_extern("handle", f"AscendC::Sort32", dst.access_ptr("w"),
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_sort32"), dst.access_ptr("w"),
                          src0.access_ptr("r"), src1.access_ptr("r"), repeatTimes)
 
 
@@ -410,7 +410,7 @@ def transpose(dst: Buffer, src: Buffer):
 
 def gather(dst: Buffer, src: Buffer, src_offset: Buffer, src_base_addr: PrimExpr):
     count = math.prod(src.shape)
-    return T.call_extern("handle", "AscendC::Gather", dst.access_ptr("w"), src.access_ptr("r"),
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_gather"), dst.access_ptr("w"), src.access_ptr("r"),
                           src_offset.access_ptr("r"), src_base_addr, count)
 
 
@@ -427,8 +427,7 @@ def reduce(out: Buffer, buffer: Buffer, tmp: Buffer, reduce_type: str, dim: int)
     else:
         pattern = "AscendC::Pattern::Reduce::RA"
 
-    return T.call_extern("handle", f"tl::ascend::{reduce_type}<{dtype}, {shape}, {pattern}>", out,
-                         buffer, tmp)
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_reduce"), f"tl::ascend::{reduce_type}<{dtype}, {shape}, {pattern}>", out, buffer, tmp)
 
 
 def reduce_max(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
@@ -442,15 +441,15 @@ def reduce_sum(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
 
 
 def block_reduce_max(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceMax", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_max"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def block_reduce_min(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceMin", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_min"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def block_reduce_sum(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_extern("handle", "AscendC::BlockReduceSum", dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_sum"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
 
 
 def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr], mode: str):
@@ -480,7 +479,7 @@ def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]
         return T.call_extern("handle", f"AscendC::Compare", dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
 
 
-def cast_tl(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):
+def cast(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):
     assert mode in ["CAST_NONE", "CAST_RINT", "CAST_FLOOR", "CAST_CEIL", "CAST_ROUND", "CAST_TRUNC", "CAST_ODD"]
 
     round_mode = f"AscendC::RoundMode::{mode}"
@@ -488,12 +487,7 @@ def cast_tl(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):
     # int32 cast half，roundMode not work，should SetDeqScale(half scale)
     # if (src.dtype == "int32" and dst.dtype == "float16"):
     #     T.call_extern("handle", f"AscendC::SetDeqScale", scale)
-
-    return T.call_extern("handle", f"AscendC::Cast", dst.access_ptr("w"), src.access_ptr("r"), round_mode, count)
-
-
-def set_deq_scale(scale: PrimExpr):
-    return T.call_extern("handle", f"AscendC::SetDeqScale", scale)
+    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_cast"), dst.access_ptr("w"), src.access_ptr("r"), round_mode, count)
 
 
 def sin(dst: Buffer, src: Buffer, tmp: Buffer):
