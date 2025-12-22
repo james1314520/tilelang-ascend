@@ -983,6 +983,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     InitSortBufCodegen(op);
   } else if (op->op.same_as(tl::ascend_pow())) {
     PowerOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_bitwise_xor())) {
+    PrintOpCall(op, "AscendC::Xor", {0, op->args.size()}, {0, 0});
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
