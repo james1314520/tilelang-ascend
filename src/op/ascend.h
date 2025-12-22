@@ -47,9 +47,9 @@ TVM_DLL const Op &ascend_max();
 
 TVM_DLL const Op &ascend_min();
 
-TVM_DLL const Op &ascend_and();
+TVM_DLL const Op &ascend_bitwise_and();
 
-TVM_DLL const Op &ascend_or();
+TVM_DLL const Op &ascend_bitwise_or();
 
 TVM_DLL const Op &ascend_adds();
 

@@ -284,6 +284,7 @@ def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferReg
         return T.call_extern("handle", f"AscendC::{op}", dst_ptr, src0_ptr, src1.access_ptr("r"),
                              size_0)
 
+
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     return binary_op(dst, src0, src1, "add")
 
@@ -307,11 +308,13 @@ def max(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
 def min(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
     return binary_op(dst, src0, src1, "min")
 
-def and_tl(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "and")
 
-def or_tl(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
-    return binary_op(dst, src0, src1, "or")
+def bitwise_and(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    return binary_op(dst, src0, src1, "bitwise_and")
+
+
+def bitwise_or(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    return binary_op(dst, src0, src1, "bitwise_or")
 
 
 def unary_op(dst: Buffer, src0: Buffer, op: str):

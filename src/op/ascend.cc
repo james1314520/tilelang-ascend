@@ -294,11 +294,11 @@ TIR_DEFINE_TL_BUILTIN(ascend_min)
     .set_num_inputs(4)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
-TIR_DEFINE_TL_BUILTIN(ascend_and)
+TIR_DEFINE_TL_BUILTIN(ascend_bitwise_and)
     .set_num_inputs(4)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
-TIR_DEFINE_TL_BUILTIN(ascend_or)
+TIR_DEFINE_TL_BUILTIN(ascend_bitwise_or)
     .set_num_inputs(4)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
