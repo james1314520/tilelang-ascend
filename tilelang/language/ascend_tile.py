@@ -471,12 +471,16 @@ def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]
         buffer_1 = src1.buffer
         indices_1 = src1.indices
         # we only can pass the extra index
-        return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr,
+        #return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr,
+        #                     buffer_1.access_ptr("r"), indices_1[0], cmp_mode, dst_size)
+        return T.call_extern("handle", tir.op.Op.get("tl.ascend_compare_scalar"), dst_ptr, src0_ptr,
                              buffer_1.access_ptr("r"), indices_1[0], cmp_mode, dst_size)
     elif isinstance(src1, (PrimExpr, float)):
-        return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr, src1, cmp_mode, dst_size)
+        # return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr, src1, cmp_mode, dst_size)
+        return T.call_intrin("handle", tir.op.Op.get("tl.ascend_compare_scalar"), dst_ptr, src0_ptr, src1, cmp_mode, dst_size)
     else:
-        return T.call_extern("handle", f"AscendC::Compare", dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
+        # return T.call_extern("handle", f"AscendC::Compare", dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
+        return T.call_intrin("handle", tir.op.Op.get("tl.ascend_compare"), dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
 
 
 def cast(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):

@@ -100,6 +100,10 @@ private:
 
   void DivsOpCodegen(const CallNode *op);
 
+  void CompareCodegen(const CallNode *op, const std::string& op_name);
+
+  void CompareScalarCodegen(const CallNode *op, const std::string& op_name);
+
   void Sort32Codegen(const CallNode *op, const std::string& op_name);
 
   void GatherCodegen(const CallNode *op, const std::string& op_name);
