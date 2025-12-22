@@ -350,8 +350,8 @@ def rsqrt(dst: Buffer, src0: Buffer):
 def relu(dst: Buffer, src0: Buffer):
     return unary_op(dst, src0, "relu")
 
-def not_tl(dst: Buffer, src0: Buffer):
-    return unary_op(dst, src0, "not")
+def bitwise_not(dst: Buffer, src0: Buffer):
+    return unary_op(dst, src0, "bitwise_not")
 
 
 def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str):
@@ -372,23 +372,23 @@ def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
     return scalar_op(dst, src0, scalar_value, "Axpy", "axpy")
 
 
-def shiftleft(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+def bitwise_lshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftleft"), dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_bitwise_lshift"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 
-def shiftright(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+def bitwise_rshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_shiftright"), dst.access_ptr("w"),
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_bitwise_rshift"), dst.access_ptr("w"),
                          src0.access_ptr("r"), scalarValue, size_0)
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):

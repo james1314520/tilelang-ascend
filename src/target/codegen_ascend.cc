@@ -749,15 +749,15 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     UnaryVecOpCodegen(op, "AscendC::Rsqrt");
   } else if (op->op.same_as(tl::ascend_relu())) {
     UnaryVecOpCodegen(op, "AscendC::Relu");
-  } else if (op->op.same_as(tl::ascend_not())) {
+  } else if (op->op.same_as(tl::ascend_bitwise_not())) {
     UnaryVecOpCodegen(op, "AscendC::Not");
   } else if (op->op.same_as(tl::ascend_leaky_relu())) {
     ScalarOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_axpy())) {
     ScalarOpCodegen(op);
-  } else if (op->op.same_as(tl::ascend_shiftleft())) {
+  } else if (op->op.same_as(tl::ascend_bitwise_lshift())) {
     ShiftOpCodegen(op, "AscendC::ShiftLeft");
-  } else if (op->op.same_as(tl::ascend_shiftright())) {
+  } else if (op->op.same_as(tl::ascend_bitwise_rshift())) {
     ShiftOpCodegen(op, "AscendC::ShiftRight");
   } else if (op->op.same_as(tl::ascend_sin())) {
     TrigOpCodegen(op, "AscendC::Sin");
