@@ -437,6 +437,8 @@ def reduce_max(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
 
     return reduce(out, buffer, tmp, "reduce_max", dim)
 
+def reduce_min(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
+    return reduce(out, buffer, tmp, "reduce_min", dim)
 
 def reduce_sum(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
 

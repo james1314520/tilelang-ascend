@@ -1656,6 +1656,7 @@ void CodeGenTileLangAscend::SetDeqScaleCodegen(const CallNode *op, const std::st
       this->stream << PrintExpr(op->args[0]);
 
       this->stream << ");\n";
+}
 
 void CodeGenTileLangAscend::PowerOpCodegen(const CallNode *op) {
   std::string op_name = Downcast<StringImm>(op->args[0])->value;
