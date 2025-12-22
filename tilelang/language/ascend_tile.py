@@ -515,3 +515,6 @@ def cos(dst: Buffer, src: Buffer, tmp: Buffer):
     return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_cos"), dst.access_ptr("w"), src.access_ptr("r"),
                          tmp.access_ptr("r"), size_0)
 
+def pow(dst: Buffer, src0: Buffer, src1: Buffer, tmp: Buffer):
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_pow"), f"AscendC::Power<{_dtype(src0)}>", dst.access_ptr("w"), src0.access_ptr("r"),
+                        src1.access_ptr("r"), tmp.access_ptr("w"))

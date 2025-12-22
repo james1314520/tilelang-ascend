@@ -981,6 +981,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     SelectCodegen(op, "AscendC::Select");
   } else if (op->op.same_as(tl::ascend_init_sort_buf())) {
     InitSortBufCodegen(op);
+  } else if (op->op.same_as(tl::ascend_pow())) {
+    PowerOpCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1740,6 +1742,11 @@ void CodeGenTileLangAscend::DivsOpCodegen(const CallNode *op){
 
       this->stream << ", " << PrintExpr(op->args[op->args.size() - 1])
                    << ");\n";
+}
+
+void CodeGenTileLangAscend::PowerOpCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  PrintOpCall(op, op_name, {1, op->args.size()}, {0, 0});
 }
 
 } // namespace codegen

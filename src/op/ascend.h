@@ -109,6 +109,8 @@ TVM_DLL const Op &ascend_gatherb();
 
 TVM_DLL const Op &ascend_init_sort_buf();
 
+TVM_DLL const Op &ascend_pow();
+
 } // namespace tl
 } // namespace tvm
 
