@@ -14,7 +14,7 @@ import torch
     }
 )
 def simple_gemv(
-    N:int, K:int, block_N:int, block_K:int, 
+    N:int, K:int, block_N:int, block_K:int,
     dtype:str = "float16", accum_dtype:str = "float"
 ):
     VEC_NUM = 2
@@ -50,14 +50,14 @@ def simple_gemv(
             for bk in T.serial(k_num):
                 T.copy(x[bk * block_K], x_ub)
                 T.copy(A[bn * block_N, bk * block_K], A_ub)
-                T.tile.cast_tl(x_32_ub, x_ub, CAST_MODE, block_K)  # cast to float for reduce_sum
-                T.tile.cast_tl(A_32_ub, A_ub, CAST_MODE, block_N * block_K)  # cast to float for reduce_sum
+                T.tile.cast(x_32_ub, x_ub, CAST_MODE, block_K)  # cast to float for reduce_sum
+                T.tile.cast(A_32_ub, A_ub, CAST_MODE, block_N * block_K)  # cast to float for reduce_sum
                 for i in T.serial(block_N):
                     T.tile.mul(A_32_ub[i, :], A_32_ub[i, :], x_32_ub)
                 T.tile.reduce_sum(y_single_32_ub, A_32_ub, temp_ub, dim=-1)
                 T.tile.add(y_total_32_ub, y_total_32_ub, y_single_32_ub)
-            
-            T.tile.cast_tl(y_ub, y_total_32_ub, CAST_MODE, block_N)  # cast back
+
+            T.tile.cast(y_ub, y_total_32_ub, CAST_MODE, block_N)  # cast back
             T.copy(y_ub, y[bn * block_N])
     return main
 
