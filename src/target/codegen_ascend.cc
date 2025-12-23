@@ -11,6 +11,9 @@
 #include <tvm/tir/index_map.h>
 #include <tvm/tir/op.h>
 
+#include <tvm/tir/expr.h>
+#include <tvm/ir/printer.h>
+
 #include <cmath>
 #include <string>
 #include <utility>

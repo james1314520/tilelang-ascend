@@ -23,6 +23,9 @@
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
 #include <tvm/tir/utils.h>
+#include <tvm/runtime/registry.h>
+#include <tvm/tir/expr.h>
+#include <tvm/ir/printer.h>
 
 #include "../op/builtin.h"
 #include "./common/collector.h"
@@ -39,13 +42,16 @@ TVM_REGISTER_PASS_CONFIG_OPTION(kAscendAutoSync, Bool);
 
 
 
-static inline is_call_intrin(CallNode* node){
+static inline bool is_call_intrin(const CallNode* node){
   std::string text = AsText(GetRef<Call>(node));
   std::cout << "CallNode as text: " << text << std::endl;
-
-  if(node->op.same_as(tir::call_intrin)) {
-    std::cout << "+++++++++++++++++++++hit+++++++++++++++++" << std::endl;
-    return true;
+  if (node->op.as<OpNode>()) {
+    auto op = Downcast<Op>(node->op);
+    std::cout << "opname: " << op->name << std::endl;
+    if(op->name == "tir.call_intrin") {
+      std::cout << "+++++++++++++++++++++hit+++++++++++++++++" << std::endl;
+      return true;
+    }
   }
   return false;
 }
