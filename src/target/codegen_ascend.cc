@@ -736,6 +736,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     PowerOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_bitwise_xor())) {
     PrintOpCall(op, "AscendC::Xor", {0, op->args.size()}, {0, 0});
+  } else if (op->op.same_as(tl::ascend_broadcast())) {
+    BroadcastOpCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1232,6 +1234,17 @@ void CodeGenTileLangAscend::PrintOpCall(const CallNode* op, const std::string& o
   this->stream << ");\n";
 }
 
+void CodeGenTileLangAscend::PrintConstArray(const CallNode* op, int start_idx, int len, const std::string& dtype) {
+  this->stream << "(" << dtype << "[]){";
+  for (int i = 0; i < len; ++i) {
+    this->stream << PrintExpr(op->args[start_idx + i]);
+    if (i < len - 1) {
+      this->stream << ", ";
+    }
+  }
+  this->stream << "}";
+}
+
 void CodeGenTileLangAscend::BinaryVecOpCodegen(const CallNode* op, const std::string& op_name) {
   std::vector<std::string> var_names;
   for (int i = 0; i < op->args.size() - 1; i++) {
@@ -1661,6 +1674,24 @@ void CodeGenTileLangAscend::SetDeqScaleCodegen(const CallNode *op, const std::st
 void CodeGenTileLangAscend::PowerOpCodegen(const CallNode *op) {
   std::string op_name = Downcast<StringImm>(op->args[0])->value;
   PrintOpCall(op, op_name, {1, op->args.size()}, {0, 0});
+}
+
+void CodeGenTileLangAscend::BroadcastOpCodegen(const CallNode *op) {
+  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  int dim = op->args[3].as<IntImmNode>()->value;
+
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  // 1. Dst Buffer
+  this->stream << PrintBufferOffset(op->args[1].as<CallNode>()) << ",";
+  // 2. Src Buffer
+  this->stream << PrintBufferOffset(op->args[2].as<CallNode>()) << ",";
+  // 3. Dst Shape Array
+  PrintConstArray(op, 4, dim); 
+  this->stream << ", ";
+  // 4. Src Shape Array
+  PrintConstArray(op, 4 + dim, dim);
+  this->stream << ");\n";
 }
 
 } // namespace codegen
