@@ -663,6 +663,9 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
   } else if (op->op.same_as(tl::ascend_divs())) {
     DivsOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_sort32())) {
+    std::string text = AsText(GetRef<Call>(op));
+    std::cout << "================= sort32 CallNode as text: " << text << std::endl;
+
     Sort32Codegen(op, "AscendC::Sort32");
   } else if (op->op.same_as(tl::ascend_compare())) {
     CompareCodegen(op, "AscendC::Compare");
