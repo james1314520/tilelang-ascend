@@ -257,6 +257,15 @@ CATLASS_DEVICE void reduce_max(LocalTensor<T> const &dstTensor,
                                  true);
 }
 
+template <typename T, uint32_t M, uint32_t N, class pattern>
+CATLASS_DEVICE void reduce_min(LocalTensor<T> const &dstTensor,
+                               LocalTensor<T> const &srcTensor,
+                               LocalTensor<uint8_t> const &sharedTmpBuffer) {
+  uint32_t shape[] = {M, N};
+  AscendC::ReduceMin<T, pattern>(dstTensor, srcTensor, sharedTmpBuffer, shape,
+                                 true);
+}
+
 template <typename T1, typename T2, uint32_t M, uint32_t N, uint32_t K,
           bool transpose_A = false, bool transpose_B = false>
 CATLASS_DEVICE void

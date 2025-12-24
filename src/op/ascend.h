@@ -129,6 +129,11 @@ TVM_DLL const Op &ascend_cast();
 
 TVM_DLL const Op &ascend_set_deq_scale();
 
+TVM_DLL const Op &ascend_pow();
+
+TVM_DLL const Op &ascend_bitwise_xor();
+
+TVM_DLL const Op &ascend_broadcast();
 } // namespace tl
 } // namespace tvm
 
