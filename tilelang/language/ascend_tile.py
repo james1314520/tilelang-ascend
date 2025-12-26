@@ -391,10 +391,30 @@ def select(
         )
 
 
-def init_sort_buf(buffer: Buffer, num, rsv):
-    pass
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_init_sort_buf"), f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
-                         buffer.access_ptr("w"), rsv, num)
+def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
+    """Initializes a buffer for sorting operations.
+
+    This intrinsic invokes the underlying implementation to initialize the specified
+    buffer, which is typically required as an auxiliary or index buffer for 
+    hardware sorting instructions.
+
+    Args:
+        buffer: The buffer to be initialized.
+        num: The number of elements to initialize in the buffer.
+        rsv: A reserved parameter or specific initialization value required by 
+            the hardware API.
+
+    Returns:
+        A TVM intrinsic call that performs the buffer initialization.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_init_sort_buf"),
+        f"tl::ascend::InitSortBuf<{_dtype(buffer)}>",
+        buffer.access_ptr("w"),
+        rsv,
+        num,
+    )
 
 
 def brcb(dst: Buffer, src: Buffer, repeat_times: PrimExpr, dst_blk_stride: PrimExpr,
