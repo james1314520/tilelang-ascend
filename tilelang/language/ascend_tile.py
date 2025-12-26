@@ -837,31 +837,167 @@ def reduce(out: Buffer, buffer: Buffer, tmp: Buffer, reduce_type: str, dim: int)
     else:
         pattern = "AscendC::Pattern::Reduce::RA"
 
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_reduce"), f"tl::ascend::{reduce_type}<{dtype}, {shape}, {pattern}>", out, buffer, tmp)
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_reduce"),
+        f"tl::ascend::{reduce_type}<{dtype}, {shape}, {pattern}>",
+        out,
+        buffer,
+        tmp,
+    )
 
 
 def reduce_max(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
+    """Performs a reduction max operation.
 
+    Args:
+        out: The destination buffer.
+        buffer: The source buffer (2D).
+        tmp: The temporary buffer.
+        dim: The dimension to reduce along (-1 for last dim).
+    """
     return reduce(out, buffer, tmp, "reduce_max", dim)
 
+
 def reduce_min(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
+    """Performs a reduction min operation.
+
+    Args:
+        out: The destination buffer.
+        buffer: The source buffer (2D).
+        tmp: The temporary buffer.
+        dim: The dimension to reduce along (-1 for last dim).
+    """
     return reduce(out, buffer, tmp, "reduce_min", dim)
 
-def reduce_sum(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
 
+def reduce_sum(out: Buffer, buffer: Buffer, tmp: Buffer, dim: int):
+    """Performs a reduction sum operation.
+
+    Args:
+        out: The destination buffer.
+        buffer: The source buffer (2D).
+        tmp: The temporary buffer.
+        dim: The dimension to reduce along (-1 for last dim).
+    """
     return reduce(out, buffer, tmp, "reduce_sum", dim)
 
 
-def block_reduce_max(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_max"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+def block_reduce_max(
+    dst: Buffer,
+    src: Buffer,
+    repeat: PrimExpr,
+    mask: PrimExpr,
+    dstPepStride: PrimExpr,
+    srcBlkStride: PrimExpr,
+    srcRepStride: PrimExpr,
+):
+    """Performs a block-level reduction max operation.
+
+    This intrinsic invokes the underlying implementation to find the maximum
+    value within data blocks from the source buffer.
+
+    Args:
+        dst: The destination buffer where the results will be stored.
+        src: The source buffer containing the data to be reduced.
+        repeat: The number of iterations (repeats) to perform.
+        mask: The mask parameter to control valid elements in the operation.
+        dstPepStride: The stride between destination elements for consecutive repeats.
+        srcBlkStride: The stride between source blocks within a single iteration.
+        srcRepStride: The stride between source blocks for consecutive repeats.
+
+    Returns:
+        A TVM intrinsic call that performs the block reduce max operation.
+    """
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_block_reduce_max"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        repeat,
+        mask,
+        dstPepStride,
+        srcBlkStride,
+        srcRepStride,
+    )
 
 
-def block_reduce_min(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_min"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+def block_reduce_min(
+    dst: Buffer,
+    src: Buffer,
+    repeat: PrimExpr,
+    mask: PrimExpr,
+    dstPepStride: PrimExpr,
+    srcBlkStride: PrimExpr,
+    srcRepStride: PrimExpr,
+):
+    """Performs a block-level reduction min operation.
+
+    This intrinsic invokes the underlying implementation to find the minimum
+    value within data blocks from the source buffer.
+
+    Args:
+        dst: The destination buffer where the results will be stored.
+        src: The source buffer containing the data to be reduced.
+        repeat: The number of iterations (repeats) to perform.
+        mask: The mask parameter to control valid elements in the operation.
+        dstPepStride: The stride between destination elements for consecutive repeats.
+        srcBlkStride: The stride between source blocks within a single iteration.
+        srcRepStride: The stride between source blocks for consecutive repeats.
+
+    Returns:
+        A TVM intrinsic call that performs the block reduce min operation.
+    """
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_block_reduce_min"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        repeat,
+        mask,
+        dstPepStride,
+        srcBlkStride,
+        srcRepStride,
+    )
 
 
-def block_reduce_sum(dst: Buffer, src: Buffer, repeat: PrimExpr, mask: PrimExpr, dstPepStride: PrimExpr, srcBlkStride: PrimExpr, srcRepStride: PrimExpr):
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_block_reduce_sum"), dst.access_ptr("w"), src.access_ptr("r"), repeat, mask, dstPepStride, srcBlkStride, srcRepStride)
+def block_reduce_sum(
+    dst: Buffer,
+    src: Buffer,
+    repeat: PrimExpr,
+    mask: PrimExpr,
+    dstPepStride: PrimExpr,
+    srcBlkStride: PrimExpr,
+    srcRepStride: PrimExpr,
+):
+    """Performs a block-level reduction sum operation.
+
+    This intrinsic invokes the underlying implementation to calculate the sum
+    of elements within data blocks from the source buffer.
+
+    Args:
+        dst: The destination buffer where the results will be stored.
+        src: The source buffer containing the data to be reduced.
+        repeat: The number of iterations (repeats) to perform.
+        mask: The mask parameter to control valid elements in the operation.
+        dstPepStride: The stride between destination elements for consecutive repeats.
+        srcBlkStride: The stride between source blocks within a single iteration.
+        srcRepStride: The stride between source blocks for consecutive repeats.
+
+    Returns:
+        A TVM intrinsic call that performs the block reduce sum operation.
+    """
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_block_reduce_sum"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        repeat,
+        mask,
+        dstPepStride,
+        srcBlkStride,
+        srcRepStride,
+    )
 
 
 def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr], mode: str):
