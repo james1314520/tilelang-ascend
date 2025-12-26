@@ -5,6 +5,7 @@ from tvm import tir
 
 import math
 
+
 def _get_buffer_info(
     br: Union[Buffer, BufferRegion], mask: str
 ) -> Tuple[Call, PrimExpr]:
@@ -38,9 +39,21 @@ def _get_buffer_info(
     else:
         raise TypeError(f"Unsupported type: {type(br)}")
 
+
 def _dtype(buf):
-    type_map = {"float16": "half", "float32": "float", "int32": "int", "uint32": "uint32_t", "bfloat16": "bfloat16_t", "uint16": "uint16_t", "uint8": "uint8_t",
-                "int8": "int8_t", "int16": "int16_t", "int64": "int64_t", "uint64": "uint64_t"}
+    type_map = {
+        "float16": "half",
+        "float32": "float",
+        "int32": "int",
+        "uint32": "uint32_t",
+        "bfloat16": "bfloat16_t",
+        "uint16": "uint16_t",
+        "uint8": "uint8_t",
+        "int8": "int8_t",
+        "int16": "int16_t",
+        "int64": "int64_t",
+        "uint64": "uint64_t",
+    }
     if isinstance(buf, BufferRegion):
         buf = buf.buffer
     return type_map[buf.dtype]
@@ -60,8 +73,14 @@ def fill(buffer: Buffer, value: PrimExpr):
 
     size = math.prod(buffer.shape)
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_fill"), f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
-                         value, size)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_fill"),
+        f"AscendC::Duplicate<{_dtype(buffer)}>",
+        buffer.access_ptr("w"),
+        value,
+        size,
+    )
 
 
 def arith_progression(
@@ -143,7 +162,7 @@ def merge_sort(
         src: The source buffer containing the data to be merged or sorted.
         block_size: The number of elements in each block to be merged.
         block_num: The total number of blocks to process.
-        is_copy: A boolean flag (0 or 1) indicating whether to copy the data 
+        is_copy: A boolean flag (0 or 1) indicating whether to copy the data
             without sorting.
 
     Returns:
@@ -258,15 +277,15 @@ def select(
 ):
     """Performs an element-wise Select operation based on a mask.
 
-    This intrinsic invokes the underlying Ascend implementation to select elements 
-    from `src0` or `src1` based on the `selMask` condition and the specified `selMode`, 
+    This intrinsic invokes the underlying Ascend implementation to select elements
+    from `src0` or `src1` based on the `selMask` condition and the specified `selMode`,
     storing the result in `dst`.
 
     Args:
         dst: The destination buffer or buffer region where the result will be stored.
         selMask: The mask buffer that determines which source to select from.
         src0: The first source buffer or buffer region.
-        src1: The second source operand. It can be a Buffer (Tensor), a specific 
+        src1: The second source operand. It can be a Buffer (Tensor), a specific
             BufferLoad, or a scalar value (PrimExpr/float).
         selMode: The selection mode string. Must be one of:
             - 'VSEL_CMPMASK_SPR': Select based on compare mask.
@@ -276,6 +295,7 @@ def select(
     Returns:
         A TVM intrinsic call that performs the Select operation.
     """
+
     def retrieve_shape(object: Union[Buffer, BufferRegion]) -> List[int]:
         if isinstance(object, Buffer):
             return list(object.shape)
@@ -395,13 +415,13 @@ def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
     """Initializes a buffer for sorting operations.
 
     This intrinsic invokes the underlying implementation to initialize the specified
-    buffer, which is typically required as an auxiliary or index buffer for 
+    buffer, which is typically required as an auxiliary or index buffer for
     hardware sorting instructions.
 
     Args:
         buffer: The buffer to be initialized.
         num: The number of elements to initialize in the buffer.
-        rsv: A reserved parameter or specific initialization value required by 
+        rsv: A reserved parameter or specific initialization value required by
             the hardware API.
 
     Returns:
@@ -656,14 +676,23 @@ def bitwise_not(dst: Buffer, src0: Buffer):
     return unary_op(dst, src0, "bitwise_not")
 
 
-def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str):
+def scalar_op(
+    dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str
+):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op_tl), f"AscendC::{op_ascend}<{_dtype(src0)}>",
-                           dst.access_ptr("w"), src0.access_ptr("r"), scalar_value, size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_" + op_tl),
+        f"AscendC::{op_ascend}<{_dtype(src0)}>",
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        scalar_value,
+        size_0,
+    )
 
 
 def leaky_relu(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
@@ -742,7 +771,7 @@ def bitwise_rshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
     """Performs a specific 32-element block sorting operation.
 
-    This intrinsic invokes the underlying implementation to sort data in groups 
+    This intrinsic invokes the underlying implementation to sort data in groups
     of 32 elements.
 
     Args:
@@ -764,7 +793,7 @@ def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
 def createvecindex(dst: Buffer, firstValue: PrimExpr):
     """Generates a vector index sequence.
 
-    This intrinsic fills the destination buffer with a sequence of increasing 
+    This intrinsic fills the destination buffer with a sequence of increasing
     indices starting from `firstValue` (e.g., firstValue, firstValue+1, ...).
 
     Args:
@@ -785,7 +814,7 @@ def createvecindex(dst: Buffer, firstValue: PrimExpr):
 def transpose(dst: Buffer, src: Buffer):
     """Performs a matrix transposition operation.
 
-    This intrinsic invokes the underlying implementation to transpose the source 
+    This intrinsic invokes the underlying implementation to transpose the source
     buffer into the destination buffer.
 
     Args:
@@ -803,7 +832,7 @@ def transpose(dst: Buffer, src: Buffer):
 def gather(dst: Buffer, src: Buffer, src_offset: Buffer, src_base_addr: PrimExpr):
     """Performs a gather operation.
 
-    This intrinsic gathers elements from the source buffer based on the provided 
+    This intrinsic gathers elements from the source buffer based on the provided
     offsets and a base address, storing the result in the destination buffer.
 
     Args:
@@ -1000,7 +1029,32 @@ def block_reduce_sum(
     )
 
 
-def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr], mode: str):
+def compare(
+    dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr], mode: str
+):
+    """Generic dispatch function for element-wise comparison operations.
+
+    This function compares elements between `src0` and `src1` according to the
+    specified `mode` and stores the result in `dst`. It supports both
+    tensor-tensor and tensor-scalar comparisons.
+
+    Args:
+        dst: The destination buffer where the comparison results will be stored.
+        src0: The first source buffer.
+        src1: The second source operand. It can be a Buffer (for element-wise
+            tensor comparison) or a BufferLoad/PrimExpr/float (for tensor-scalar
+            comparison).
+        mode: The comparison mode string. Supported values:
+            - "EQ": Equal to (==)
+            - "NE": Not equal to (!=)
+            - "GT": Greater than (>)
+            - "GE": Greater than or equal to (>=)
+            - "LT": Less than (<)
+            - "LE": Less than or equal to (<=)
+
+    Returns:
+        A TVM intrinsic call that performs the comparison operation.
+    """
     assert mode in ["EQ", "NE", "GT", "GE", "LT", "LE"]
 
     dst_ptr = dst.access_ptr("w")
@@ -1018,68 +1072,185 @@ def compare(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]
     if isinstance(src1, BufferLoad):
         buffer_1 = src1.buffer
         indices_1 = src1.indices
-        # we only can pass the extra index
-        #return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr,
-        #                     buffer_1.access_ptr("r"), indices_1[0], cmp_mode, dst_size)
-        return T.call_intrin("handle", tir.op.Op.get("tl.ascend_compare_scalar"), dst_ptr, src0_ptr,
-                             buffer_1.access_ptr("r"), indices_1[0], cmp_mode, dst_size)
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_compare_scalar"),
+            dst_ptr,
+            src0_ptr,
+            buffer_1.access_ptr("r"),
+            indices_1[0],
+            cmp_mode,
+            dst_size,
+        )
     elif isinstance(src1, (PrimExpr, float)):
-        # return T.call_extern("handle", f"AscendC::CompareScalar", dst_ptr, src0_ptr, src1, cmp_mode, dst_size)
-        return T.call_intrin("handle", tir.op.Op.get("tl.ascend_compare_scalar"), dst_ptr, src0_ptr, src1, cmp_mode, dst_size)
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_compare_scalar"),
+            dst_ptr,
+            src0_ptr,
+            src1,
+            cmp_mode,
+            dst_size,
+        )
     else:
-        # return T.call_extern("handle", f"AscendC::Compare", dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
-        return T.call_intrin("handle", tir.op.Op.get("tl.ascend_compare"), dst_ptr, src0_ptr, src1.access_ptr("r"), cmp_mode, dst_size)
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_compare"),
+            dst_ptr,
+            src0_ptr,
+            src1.access_ptr("r"),
+            cmp_mode,
+            dst_size,
+        )
 
 
 def cast(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):
-    assert mode in ["CAST_NONE", "CAST_RINT", "CAST_FLOOR", "CAST_CEIL", "CAST_ROUND", "CAST_TRUNC", "CAST_ODD"]
+    """Performs element-wise data type conversion with a specified rounding mode.
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src: The source buffer containing the input data.
+        mode: The rounding mode string. Supported values include:
+            - "CAST_NONE": No specific rounding.
+            - "CAST_RINT": Round to the nearest integer.
+            - "CAST_FLOOR": Round down (towards negative infinity).
+            - "CAST_CEIL": Round up (towards positive infinity).
+            - "CAST_ROUND": Round to the nearest integer, ties away from zero.
+            - "CAST_TRUNC": Truncate (round towards zero).
+            - "CAST_ODD": Round to the nearest odd integer.
+        count: The number of elements to process.
+
+    Returns:
+        A TVM intrinsic call that performs the cast operation.
+    """
+    assert mode in [
+        "CAST_NONE",
+        "CAST_RINT",
+        "CAST_FLOOR",
+        "CAST_CEIL",
+        "CAST_ROUND",
+        "CAST_TRUNC",
+        "CAST_ODD",
+    ]
 
     round_mode = f"AscendC::RoundMode::{mode}"
 
-    # int32 cast half，roundMode not work，should SetDeqScale(half scale)
-    # if (src.dtype == "int32" and dst.dtype == "float16"):
-    #     T.call_extern("handle", f"AscendC::SetDeqScale", scale)
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_cast"), dst.access_ptr("w"), src.access_ptr("r"), round_mode, count)
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_cast"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        round_mode,
+        count,
+    )
 
 
 def sin(dst: Buffer, src: Buffer, tmp: Buffer):
+    """Performs element-wise sine calculation: dst = sin(src).
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src: The source buffer containing the input data.
+        tmp: A temporary buffer used for intermediate calculations.
+
+    Returns:
+        A TVM intrinsic call that performs the sine operation.
+    """
     size_0 = math.prod(src.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sin"), dst.access_ptr("w"), src.access_ptr("r"),
-                         tmp.access_ptr("r"), size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_sin"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        tmp.access_ptr("r"),
+        size_0,
+    )
 
 
 def cos(dst: Buffer, src: Buffer, tmp: Buffer):
+    """Performs element-wise cosine calculation: dst = cos(src).
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src: The source buffer containing the input data.
+        tmp: A temporary buffer used for intermediate calculations.
+
+    Returns:
+        A TVM intrinsic call that performs the cosine operation.
+    """
     size_0 = math.prod(src.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_cos"), dst.access_ptr("w"), src.access_ptr("r"),
-                         tmp.access_ptr("r"), size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_cos"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        tmp.access_ptr("r"),
+        size_0,
+    )
+
 
 def pow(dst: Buffer, src0: Buffer, src1: Buffer, tmp: Buffer):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_pow"), f"AscendC::Power<{_dtype(src0)}>", dst.access_ptr("w"), src0.access_ptr("r"),
-                        src1.access_ptr("r"), tmp.access_ptr("w"))
+    """Performs element-wise power calculation: dst = src0 ^ src1.
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src0: The base buffer.
+        src1: The exponent buffer.
+        tmp: A temporary buffer used for intermediate calculations.
+
+    Returns:
+        A TVM intrinsic call that performs the power operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_pow"),
+        f"AscendC::Power<{_dtype(src0)}>",
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        src1.access_ptr("r"),
+        tmp.access_ptr("w"),
+    )
+
 
 def bitwise_xor(dst: Buffer, src0: Buffer, src1: Buffer):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_bitwise_xor"), dst.access_ptr("w"), src0.access_ptr("r"),
-                        src1.access_ptr("r"))
+    """Performs element-wise bitwise XOR operation: dst = src0 ^ src1.
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src0: The first source operand buffer.
+        src1: The second source operand buffer.
+
+    Returns:
+        A TVM intrinsic call that performs the bitwise XOR operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_bitwise_xor"),
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        src1.access_ptr("r"),
+    )
+
 
 def broadcast(dst: Buffer, src: Buffer):
     """Generates a TIR intrinsic call for the AscendC `Broadcast` operation.
 
-    This function performs a broadcast copy from the source buffer (`src`) to the 
-    destination buffer (`dst`). It automatically infers the broadcasting axis 
+    This function performs a broadcast copy from the source buffer (`src`) to the
+    destination buffer (`dst`). It automatically infers the broadcasting axis
     based on the shapes of the input buffers.
 
     Args:
-        dst (tvm.tir.Buffer): The destination buffer. Must be allocated in the 
+        dst (tvm.tir.Buffer): The destination buffer. Must be allocated in the
             Unified Buffer (UB). Its shape determines the output size.
-        src (tvm.tir.Buffer): The source buffer. Must be allocated in the 
+        src (tvm.tir.Buffer): The source buffer. Must be allocated in the
             Unified Buffer (UB). Its shape must be compatible with `dst` for broadcasting.
 
     Returns:
@@ -1119,5 +1290,13 @@ def broadcast(dst: Buffer, src: Buffer):
     op_name = "tl.ascend_broadcast"
     template_args = f"{_dtype(src)}, {dim}, {axis}, false"
 
-    return tir.call_intrin("handle", tir.op.Op.get(op_name), f"AscendC::Broadcast<{template_args}>", dst.access_ptr("w"),
-                           src.access_ptr("r"), dim, *dst_shape, *src_shape)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get(op_name),
+        f"AscendC::Broadcast<{template_args}>",
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        dim,
+        *dst_shape,
+        *src_shape,
+    )
