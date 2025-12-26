@@ -161,14 +161,54 @@ def merge_sort(
     )
 
 
-def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_topk"), f"tl::ascend::TopK<{_dtype(dst)}>",
-                           dst.access_ptr("w"), src.access_ptr("r"), tmp.access_ptr("r"), block_size)
+def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size: PrimExpr):
+    """Performs a TopK operation.
+
+    This intrinsic invokes the underlying implementation to select the top K elements
+    from the source data.
+
+    Args:
+        dst: The destination buffer where the TopK results will be stored.
+        src: The source buffer containing the input data.
+        tmp: A temporary buffer used for intermediate calculations during the process.
+        block_size: The size of the data block to be processed.
+
+    Returns:
+        A TVM intrinsic call that performs the TopK operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_topk"),
+        f"tl::ascend::TopK<{_dtype(dst)}>",
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        tmp.access_ptr("r"),
+        block_size,
+    )
 
 
-def gather_mask(dst: Buffer, src: Buffer, num):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gather_mask"), f"tl::ascend::GatherMask<{_dtype(dst)}>",
-                           dst.access_ptr("w"), src.access_ptr("r"), num)
+def gather_mask(dst: Buffer, src: Buffer, num: PrimExpr):
+    """Performs a gather mask operation.
+
+    This intrinsic invokes the underlying implementation to perform a gather mask
+    operation based on the source data and the specified count.
+
+    Args:
+        dst: The destination buffer where the result will be stored.
+        src: The source buffer containing the input data.
+        num: The parameter specifying the mask count or threshold.
+
+    Returns:
+        A TVM intrinsic call that performs the gather mask operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_gather_mask"),
+        f"tl::ascend::GatherMask<{_dtype(dst)}>",
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        num,
+    )
 
 
 def gatherb(dst: Buffer, src0: Buffer, offset: Buffer, repeat_time, dst_blk_stride, dst_rep_stride):
