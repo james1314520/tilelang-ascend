@@ -667,31 +667,76 @@ def scalar_op(dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str,
 
 
 def leaky_relu(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
+    """Performs element-wise Leaky ReLU activation.
+
+    Formula: dst = src0 if src0 >= 0 else src0 * scalar_value
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+        scalar_value: The negative slope coefficient.
+    """
     return scalar_op(dst, src0, scalar_value, "LeakyRelu", "leaky_relu")
 
 
 def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
+    """Performs element-wise AXPY operation: dst = scalar_value * src0 + dst.
+
+    Note: This operation updates the destination buffer in-place by adding
+    the scaled source buffer.
+
+    Args:
+        dst: The destination buffer (acts as both operand Y and output).
+        src0: The source buffer X.
+        scalar_value: The scalar alpha.
+    """
     return scalar_op(dst, src0, scalar_value, "Axpy", "axpy")
 
 
 def bitwise_lshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+    """Performs element-wise bitwise left shift: dst = src0 << scalarValue.
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+        scalarValue: The number of bits to shift (scalar).
+    """
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_bitwise_lshift"), dst.access_ptr("w"),
-                         src0.access_ptr("r"), scalarValue, size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_bitwise_lshift"),
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        scalarValue,
+        size_0,
+    )
 
 
 def bitwise_rshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
+    """Performs element-wise bitwise right shift: dst = src0 >> scalarValue.
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+        scalarValue: The number of bits to shift (scalar).
+    """
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_bitwise_rshift"), dst.access_ptr("w"),
-                         src0.access_ptr("r"), scalarValue, size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_bitwise_rshift"),
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        scalarValue,
+        size_0,
+    )
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
     repeatTimes = math.prod(src0.shape) // 32
