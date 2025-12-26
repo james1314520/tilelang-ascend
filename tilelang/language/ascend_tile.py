@@ -1,6 +1,6 @@
 import tilelang.language as T
-from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
-from typing import List, Union, Literal
+from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Call, Var
+from typing import List, Union, Tuple
 from tvm import ir, tir
 import numpy as np
 
@@ -56,7 +56,41 @@ def _dtype(buf):
     return type_map[buf.dtype]
 
 
-def fill(buffer: Buffer, value: PrimExpr):
+def _get_buffer_info(
+    br: Union[Buffer, BufferRegion], mask: str
+) -> Tuple[Call, PrimExpr]:
+    """
+    Unified handling of Buffer and BufferRegion to retrieve the underlying access pointer and total data size.
+
+    Args:
+        br: The input Buffer or BufferRegion (slice).
+        mask: Access mode (e.g., "r" for read, "w" for write).
+
+    Returns:
+        ptr: The underlying access pointer with the correct offset applied (tir.Call).
+        size: The total number of elements in the data block (tir.PrimExpr).
+    """
+    if isinstance(br, BufferRegion):
+        real_buffer = br.buffer
+
+        indices = [x.min for x in br.region]
+        offset = real_buffer.offset_of(indices)[0]
+        ptr = real_buffer.access_ptr(mask, offset=offset)
+
+        size = 1
+        for r in br.region:
+            size *= r.extent
+
+        return ptr, size
+    elif isinstance(br, Buffer):
+        ptr = br.access_ptr(mask)
+        size = math.prod(br.shape)
+        return ptr, size
+    else:
+        raise TypeError(f"Unsupported type: {type(br)}")
+    
+# AscendC::Duplicate(ubOut, value, Len);
+def fill(buffer: Union[Buffer, BufferRegion], value: PrimExpr):
     """Fill a buffer or buffer region with a specified value.
 
     Args:
@@ -66,12 +100,19 @@ def fill(buffer: Buffer, value: PrimExpr):
     Returns:
         A TVM intrinsic call that performs the fill operation
     """
-    # AscendC::Duplicate(ubOut, value, Len);
 
-    size = math.prod(buffer.shape)
+    ptr, size = _get_buffer_info(buffer, "w")
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_fill"), f"AscendC::Duplicate<{_dtype(buffer)}>", buffer.access_ptr("w"),
-                         value, size)
+    dtype_str = _dtype(buffer)
+
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_fill"),
+        f"AscendC::Duplicate<{dtype_str}>",
+        ptr,
+        value,
+        size,
+    )
 
 
 def arith_progression(buffer: Buffer, first_value, diff_value, count):
