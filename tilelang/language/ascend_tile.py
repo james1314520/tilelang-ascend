@@ -567,37 +567,92 @@ def unary_op(dst: Buffer, src0: Buffer, op: str):
 
     assert size_0 == size_2, "size must be same"
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_" + op), dst.access_ptr("w"), src0.access_ptr("r"), size_0)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_" + op),
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        size_0,
+    )
 
 
 def exp(dst: Buffer, src0: Buffer):
+    """Performs element-wise exponential: dst = exp(src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "exp")
 
 
 def ln(dst: Buffer, src0: Buffer):
+    """Performs element-wise natural logarithm: dst = ln(src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "ln")
 
 
 def abs(dst: Buffer, src0: Buffer):
+    """Performs element-wise absolute value: dst = abs(src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "abs")
 
 
 def reciprocal(dst: Buffer, src0: Buffer):
+    """Performs element-wise reciprocal: dst = 1 / src0.
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "reciprocal")
 
 
 def sqrt(dst: Buffer, src0: Buffer):
+    """Performs element-wise square root: dst = sqrt(src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "sqrt")
 
 
 def rsqrt(dst: Buffer, src0: Buffer):
+    """Performs element-wise reciprocal square root: dst = 1 / sqrt(src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "rsqrt")
 
 
 def relu(dst: Buffer, src0: Buffer):
+    """Performs element-wise Rectified Linear Unit (ReLU): dst = max(0, src0).
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "relu")
 
+
 def bitwise_not(dst: Buffer, src0: Buffer):
+    """Performs element-wise bitwise NOT (inversion): dst = ~src0.
+
+    Args:
+        dst: The destination buffer.
+        src0: The source buffer.
+    """
     return unary_op(dst, src0, "bitwise_not")
 
 
