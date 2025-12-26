@@ -517,24 +517,24 @@ def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
     return binary_op(dst, src0, src1, "div")
 
 
-def max(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
+def max(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     """Performs element-wise maximum: dst = max(src0, src1).
 
     Args:
         dst: The destination buffer.
         src0: The first source buffer.
-        src1: The second source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
     """
     return binary_op(dst, src0, src1, "max")
 
 
-def min(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
+def min(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     """Performs element-wise minimum: dst = min(src0, src1).
 
     Args:
         dst: The destination buffer.
         src0: The first source buffer.
-        src1: The second source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
     """
     return binary_op(dst, src0, src1, "min")
 
