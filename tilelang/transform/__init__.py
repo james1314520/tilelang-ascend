@@ -344,3 +344,13 @@ def MergeSharedMemoryAllocations():
         The result pass
     """
     return _ffi_api.MergeSharedMemoryAllocations()  # type: ignore
+
+def NpuLoopVectorize():
+    """Lower one dimensional parallel loops to vector api for npu
+
+    Returns
+    -------
+    fpass : tvm.transform.Pass
+        The result pass
+    """
+    return _ffi_api.NpuLoopVectorize()  # type: ignore
