@@ -417,9 +417,12 @@ def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
     )
 
 
-def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
-              src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
-
+def binary_op(
+    dst: Union[Buffer, BufferRegion],
+    src0: Union[Buffer, BufferRegion],
+    src1: Union[Buffer, BufferLoad, PrimExpr, float],
+    op: str,
+):
     def _handle_buffer_region(br: BufferRegion, mask):
         bf = br.buffer
         indices = [x.min for x in br.region]
@@ -445,48 +448,116 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
     if isinstance(src1, BufferLoad):
         buffer_1 = src1.buffer
         indices_1 = src1.indices
-        # we only can pass the extra index
-        # return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
-        #                      buffer_1.access_ptr("r"), indices_1[0], size_0)
-        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr,
-                             buffer_1.access_ptr("r"), indices_1[0], size_0)
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get(f"tl.ascend_{op}s"),
+            dst_ptr,
+            src0_ptr,
+            buffer_1.access_ptr("r"),
+            indices_1[0],
+            size_0,
+        )
 
     elif isinstance(src1, (PrimExpr, float)):
-        #return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
-        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0)
+        return T.call_intrin(
+            "handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0
+        )
     else:
-        return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}"), dst_ptr, src0_ptr, src1.access_ptr("r"), size_0)
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get(f"tl.ascend_{op}"),
+            dst_ptr,
+            src0_ptr,
+            src1.access_ptr("r"),
+            size_0,
+        )
 
 
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    """Performs element-wise addition: dst = src0 + src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
+    """
     return binary_op(dst, src0, src1, "add")
 
 
 def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
+    """Performs element-wise subtraction: dst = src0 - src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer or BufferLoad).
+    """
     return binary_op(dst, src0, src1, "sub")
 
 
 def mul(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    """Performs element-wise multiplication: dst = src0 * src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
+    """
     return binary_op(dst, src0, src1, "mul")
 
 
 def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
+    """Performs element-wise division: dst = src0 / src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer or BufferLoad).
+    """
     return binary_op(dst, src0, src1, "div")
 
 
 def max(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
+    """Performs element-wise maximum: dst = max(src0, src1).
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source buffer.
+    """
     return binary_op(dst, src0, src1, "max")
 
 
 def min(dst: Buffer, src0: Buffer, src1: Union[Buffer]):
+    """Performs element-wise minimum: dst = min(src0, src1).
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source buffer.
+    """
     return binary_op(dst, src0, src1, "min")
 
 
 def bitwise_and(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    """Performs element-wise bitwise AND: dst = src0 & src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
+    """
     return binary_op(dst, src0, src1, "bitwise_and")
 
 
 def bitwise_or(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+    """Performs element-wise bitwise OR: dst = src0 | src1.
+
+    Args:
+        dst: The destination buffer.
+        src0: The first source buffer.
+        src1: The second source operand (Buffer, BufferLoad, or Scalar).
+    """
     return binary_op(dst, src0, src1, "bitwise_or")
 
 
