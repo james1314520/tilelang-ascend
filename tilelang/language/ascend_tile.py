@@ -738,27 +738,90 @@ def bitwise_rshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
         size_0,
     )
 
+
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):
+    """Performs a specific 32-element block sorting operation.
+
+    This intrinsic invokes the underlying implementation to sort data in groups 
+    of 32 elements.
+
+    Args:
+        dst: The destination buffer where the sorted results will be stored.
+        src0: The first source buffer containing the data to be sorted.
+        src1: The second source buffer (often used for indices or auxiliary data).
+    """
     repeatTimes = math.prod(src0.shape) // 32
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_sort32"), dst.access_ptr("w"),
-                         src0.access_ptr("r"), src1.access_ptr("r"), repeatTimes)
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_sort32"),
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        src1.access_ptr("r"),
+        repeatTimes,
+    )
 
 
 def createvecindex(dst: Buffer, firstValue: PrimExpr):
+    """Generates a vector index sequence.
+
+    This intrinsic fills the destination buffer with a sequence of increasing 
+    indices starting from `firstValue` (e.g., firstValue, firstValue+1, ...).
+
+    Args:
+        dst: The destination buffer to be filled with indices.
+        firstValue: The starting value of the index sequence.
+    """
     calCount = math.prod(dst.shape)
 
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_createvecindex"), dst.access_ptr("w"),
-                         firstValue, calCount)
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_createvecindex"),
+        dst.access_ptr("w"),
+        firstValue,
+        calCount,
+    )
 
 
 def transpose(dst: Buffer, src: Buffer):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_transpose"), dst.access_ptr("w"), src.access_ptr("r"))
+    """Performs a matrix transposition operation.
+
+    This intrinsic invokes the underlying implementation to transpose the source 
+    buffer into the destination buffer.
+
+    Args:
+        dst: The destination buffer.
+        src: The source buffer to be transposed.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_transpose"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+    )
 
 
 def gather(dst: Buffer, src: Buffer, src_offset: Buffer, src_base_addr: PrimExpr):
+    """Performs a gather operation.
+
+    This intrinsic gathers elements from the source buffer based on the provided 
+    offsets and a base address, storing the result in the destination buffer.
+
+    Args:
+        dst: The destination buffer where the gathered data will be stored.
+        src: The source buffer containing the data table.
+        src_offset: The buffer containing offsets/indices for gathering.
+        src_base_addr: The base address offset to be added to the gather indices.
+    """
     count = math.prod(src.shape)
-    return T.call_intrin("handle", tir.op.Op.get("tl.ascend_gather"), dst.access_ptr("w"), src.access_ptr("r"),
-                          src_offset.access_ptr("r"), src_base_addr, count)
+    return T.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_gather"),
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        src_offset.access_ptr("r"),
+        src_base_addr,
+        count,
+    )
 
 
 def reduce(out: Buffer, buffer: Buffer, tmp: Buffer, reduce_type: str, dim: int):
