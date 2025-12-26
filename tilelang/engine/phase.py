@@ -97,6 +97,7 @@ def OptimizeForTarget(mod: IRModule, target: Target) -> IRModule:
     elif target.kind.name == "npuir":
         mod = tir.transform.LowerOpaqueBlock()(mod)
         mod = tir.transform.RemoveNoOp()(mod)
+        mod = tilelang.transform.NpuLoopVectorize()(mod)
         return mod
     else:
         mod = tilelang.transform.IfStmtBinding()(mod)
