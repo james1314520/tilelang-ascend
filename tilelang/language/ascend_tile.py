@@ -1,51 +1,9 @@
 import tilelang.language as T
-from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
-from typing import List, Union, Literal
-from tvm import ir, tir
-import numpy as np
+from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad
+from typing import List, Union
+from tvm import tir
 
 import math
-
-from tilelang.language.copy import buffer_region_to_tile_region, buffer_load_to_tile_region, region
-
-
-def _get_extent(data):
-    if isinstance(data, tir.Var) and T.has_let_value(data):
-        data = T.get_let_value(data)
-    result = []
-    if isinstance(data, tir.Buffer):
-        result = data.shape
-    elif isinstance(data, tir.BufferRegion):
-        result = [x.extent for x in data.region]
-    return result
-
-
-def _buffer_to_tile_region_with_extent(buffer: tir.Buffer, access_type: str, extent:[]):
-    """Convert a TVM buffer to a tile region descriptor.
-
-    Args:
-        buffer (tir.Buffer): The buffer to convert
-        access_type (str): Type of access - 'r' for read, 'w' for write, 'rw' for read-write
-        extent ([]): buffer extent
-
-    Returns:
-        tir.Call: A region descriptor covering the entire buffer
-    """
-    mins = [0 for _ in buffer.shape]
-    return region(T.BufferLoad(buffer, mins), access_type, *extent)
-
-
-def _to_region(data, access_type, extent):
-    if isinstance(data, tir.Var) and T.has_let_value(data):
-        data = T.get_let_value(data)
-    if isinstance(data, tir.Buffer):
-        return _buffer_to_tile_region_with_extent(data, access_type, extent)
-    elif isinstance(data, tir.BufferRegion):
-        return buffer_region_to_tile_region(data, access_type, extent[-len(data.buffer.shape):])
-    elif isinstance(data, tir.IntImm) or isinstance(data, tir.FloatImm):
-        return data
-    else:
-        return buffer_load_to_tile_region(data, access_type, extent[-len(data.buffer.shape):])
 
 
 def _dtype(buf):
@@ -245,44 +203,6 @@ def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion
         return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0)
     else:
         return T.call_intrin("handle", tir.op.Op.get(f"tl.ascend_{op}"), dst_ptr, src0_ptr, src1.access_ptr("r"), size_0)
-
-def binary_op_v1(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
-              src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
-
-    def _handle_buffer_region(br: BufferRegion, mask):
-        bf = br.buffer
-        indices = [x.min for x in br.region]
-        offset = bf.offset_of(indices)[0]
-
-        extent = [x.extent for x in br.region]
-        return bf.access_ptr(mask, offset=offset), extent
-
-    if isinstance(dst, BufferRegion):
-        dst_ptr, dst_extent = _handle_buffer_region(dst, "w")
-    else:
-        dst_ptr = dst.access_ptr("w")
-        dst_extent = dst.shape
-    if isinstance(src0, BufferRegion):
-        src0_ptr, src0_extent = _handle_buffer_region(src0, "r")
-    else:
-        src0_ptr = src0.access_ptr("r")
-        src0_extent = src0.shape
-
-    size_0 = math.prod(dst_extent)
-    size_1 = math.prod(src0_extent)
-    assert size_0 == size_1, "size must be same"
-    if isinstance(src1, BufferLoad):
-        buffer_1 = src1.buffer
-        indices_1 = src1.indices
-        # we only can pass the extra index
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr,
-                             buffer_1.access_ptr("r"), indices_1[0], size_0)
-
-    elif isinstance(src1, (PrimExpr, float)):
-        return T.call_extern("handle", f"AscendC::{op}s", dst_ptr, src0_ptr, src1, size_0)
-    else:
-        return T.call_extern("handle", f"AscendC::{op}", dst_ptr, src0_ptr, src1.access_ptr("r"),
-                             size_0)
 
 
 def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
