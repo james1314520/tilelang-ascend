@@ -126,9 +126,39 @@ def sort(
     )
 
 
-def merge_sort(dst: Buffer, src: Buffer, block_size, block_num, is_copy):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_merge_sort"), f"tl::ascend::MergeSort<{_dtype(dst)}>",
-                           dst.access_ptr("w"), src.access_ptr("r"), block_size, block_num, is_copy)
+def merge_sort(
+    dst: Buffer,
+    src: Buffer,
+    block_size: PrimExpr,
+    block_num: PrimExpr,
+    is_copy: PrimExpr,
+):
+    """Performs a merge sort operation.
+
+    This intrinsic invokes the underlying implementation to perform merge sort
+    on the data blocks.
+
+    Args:
+        dst: The destination buffer where the sorted result will be stored.
+        src: The source buffer containing the data to be merged or sorted.
+        block_size: The number of elements in each block to be merged.
+        block_num: The total number of blocks to process.
+        is_copy: A boolean flag (0 or 1) indicating whether to copy the data 
+            without sorting.
+
+    Returns:
+        A TVM intrinsic call that performs the merge sort operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_merge_sort"),
+        f"tl::ascend::MergeSort<{_dtype(dst)}>",
+        dst.access_ptr("w"),
+        src.access_ptr("r"),
+        block_size,
+        block_num,
+        is_copy,
+    )
 
 
 def topk(dst: Buffer, src: Buffer, tmp: Buffer, block_size):
