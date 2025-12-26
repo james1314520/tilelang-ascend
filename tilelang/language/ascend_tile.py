@@ -1,10 +1,42 @@
 import tilelang.language as T
-from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad
-from typing import List, Union
+from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Call
+from typing import List, Union, Tuple
 from tvm import tir
 
 import math
 
+def _get_buffer_info(
+    br: Union[Buffer, BufferRegion], mask: str
+) -> Tuple[Call, PrimExpr]:
+    """
+    Unified handling of Buffer and BufferRegion to retrieve the underlying access pointer and total data size.
+
+    Args:
+        br: The input Buffer or BufferRegion (slice).
+        mask: Access mode (e.g., "r" for read, "w" for write).
+
+    Returns:
+        ptr: The underlying access pointer with the correct offset applied (tir.Call).
+        size: The total number of elements in the data block (tir.PrimExpr).
+    """
+    if isinstance(br, BufferRegion):
+        real_buffer = br.buffer
+
+        indices = [x.min for x in br.region]
+        offset = real_buffer.offset_of(indices)[0]
+        ptr = real_buffer.access_ptr(mask, offset=offset)
+
+        size = 1
+        for r in br.region:
+            size *= r.extent
+
+        return ptr, size
+    elif isinstance(br, Buffer):
+        ptr = br.access_ptr(mask)
+        size = math.prod(br.shape)
+        return ptr, size
+    else:
+        raise TypeError(f"Unsupported type: {type(br)}")
 
 def _dtype(buf):
     type_map = {"float16": "half", "float32": "float", "int32": "int", "uint32": "uint32_t", "bfloat16": "bfloat16_t", "uint16": "uint16_t", "uint8": "uint8_t",
@@ -57,21 +89,41 @@ def arith_progression(
     )
 
 
-def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, repeat_time):
+def sort(
+    dst: Union[Buffer, BufferRegion],
+    src: Buffer,
+    indices: Buffer,
+    tmp_buffer: Buffer,
+    repeat_time: PrimExpr,
+):
+    """Sorts elements from the source buffer and stores values and indices.
 
-    def _handle_buffer_region(br: BufferRegion, mask):
-        bf = br.buffer
-        indices = [x.min for x in br.region]
-        offset = bf.offset_of(indices)[0]
-        extent = [x.extent for x in br.region]
-        return bf.access_ptr(mask, offset=offset), extent
+    This function performs a sort operation on the source buffer, outputting both
+    the sorted values to the destination buffer and the original indices to the
+    indices buffer.
 
-    if isinstance(dst, BufferRegion):
-        dst_ptr, dst_extent = _handle_buffer_region(dst, "w")
-        dst_size = math.prod(dst_extent)
-        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sort"), f"AscendC::Sort<{_dtype(dst)}, true>", dst_ptr,
-                             src.access_ptr("r"), indices.access_ptr("r"),
-                             tmp_buffer.access_ptr("r"), dst_size, repeat_time)
+    Args:
+        dst: The destination buffer or buffer region where the sorted values will be stored.
+        src: The source buffer containing the data to be sorted.
+        indices: The buffer where the original indices of the sorted elements will be stored.
+        tmp_buffer: A temporary buffer required by the hardware for the sorting computation.
+        repeat_time: The number of iterations or elements to process in the sort operation.
+
+    Returns:
+        A TVM intrinsic call that performs the sort operation.
+    """
+    dst_ptr, dst_size = _get_buffer_info(dst, "w")
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_sort"),
+        f"AscendC::Sort<{_dtype(dst)}, true>",
+        dst_ptr,
+        src.access_ptr("r"),
+        indices.access_ptr("r"),
+        tmp_buffer.access_ptr("r"),
+        dst_size,
+        repeat_time,
+    )
 
 
 def merge_sort(dst: Buffer, src: Buffer, block_size, block_num, is_copy):
