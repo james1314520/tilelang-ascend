@@ -211,12 +211,71 @@ def gather_mask(dst: Buffer, src: Buffer, num: PrimExpr):
     )
 
 
-def gatherb(dst: Buffer, src0: Buffer, offset: Buffer, repeat_time, dst_blk_stride, dst_rep_stride):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_gatherb"), f"tl::ascend::Gatherb<{_dtype(dst)}>", dst.access_ptr("w"),
-                         src0.access_ptr("r"), offset.access_ptr("r"), repeat_time, dst_blk_stride, dst_rep_stride)
+def gatherb(
+    dst: Buffer,
+    src0: Buffer,
+    offset: Buffer,
+    repeat_time: PrimExpr,
+    dst_blk_stride: PrimExpr,
+    dst_rep_stride: PrimExpr,
+):
+    """Performs a GatherB operation.
+
+    This intrinsic invokes the underlying implementation to gather data from the source
+    buffer based on the provided offsets and stores it in the destination buffer,
+    using the specified strides to control the memory layout.
+
+    Args:
+        dst: The destination buffer where the gathered data will be stored.
+        src0: The source buffer containing the data table to be gathered from.
+        offset: The buffer containing the offsets or indices for gathering.
+        repeat_time: The number of repetitions or blocks to process.
+        dst_blk_stride: The stride between elements within a block in the destination buffer.
+        dst_rep_stride: The stride between repetitions (blocks) in the destination buffer.
+
+    Returns:
+        A TVM intrinsic call that performs the GatherB operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_gatherb"),
+        f"tl::ascend::Gatherb<{_dtype(dst)}>",
+        dst.access_ptr("w"),
+        src0.access_ptr("r"),
+        offset.access_ptr("r"),
+        repeat_time,
+        dst_blk_stride,
+        dst_rep_stride,
+    )
 
 
-def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer, BufferRegion], src1: Union[Buffer, BufferLoad, PrimExpr], selMode: str):
+def select(
+    dst: Union[Buffer, BufferRegion],
+    selMask: Buffer,
+    src0: Union[Buffer, BufferRegion],
+    src1: Union[Buffer, BufferLoad, PrimExpr],
+    selMode: str,
+):
+    """Performs an element-wise Select operation based on a mask.
+
+    This intrinsic invokes the underlying Ascend implementation to select elements 
+    from `src0` or `src1` based on the `selMask` condition and the specified `selMode`, 
+    storing the result in `dst`.
+
+    Args:
+        dst: The destination buffer or buffer region where the result will be stored.
+        selMask: The mask buffer that determines which source to select from.
+        src0: The first source buffer or buffer region.
+        src1: The second source operand. It can be a Buffer (Tensor), a specific 
+            BufferLoad, or a scalar value (PrimExpr/float).
+        selMode: The selection mode string. Must be one of:
+            - 'VSEL_CMPMASK_SPR': Select based on compare mask.
+            - 'VSEL_TENSOR_SCALAR_MODE': Select between a tensor and a scalar.
+            - 'VSEL_TENSOR_TENSOR_MODE': Select between two tensors.
+
+    Returns:
+        A TVM intrinsic call that performs the Select operation.
+    """
     def retrieve_shape(object: Union[Buffer, BufferRegion]) -> List[int]:
         if isinstance(object, Buffer):
             return list(object.shape)
@@ -227,14 +286,18 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
                 shape.append(r.extent)
             return shape
         else:
-            raise ValueError(f"Unsupported argument type: {type(object)} for buffer {object}")
+            raise ValueError(
+                f"Unsupported argument type: {type(object)} for buffer {object}"
+            )
 
     dst_shape = retrieve_shape(dst)
     src0_shape = retrieve_shape(src0)
 
     assert dst_shape == src0_shape, "dst and src0 must have the same shape"
 
-    def retrieve_ptr(object: Union[Buffer, BufferRegion], access_type: str = "r") -> PrimExpr:
+    def retrieve_ptr(
+        object: Union[Buffer, BufferRegion], access_type: str = "r"
+    ) -> PrimExpr:
         if isinstance(object, Buffer):
             return object.access_ptr(access_type)
         elif isinstance(object, BufferRegion):
@@ -252,7 +315,9 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
                 offset += indices[i] * strides[i]
             return buffer.access_ptr(access_mask=access_type, offset=offset)
         else:
-            raise ValueError(f"Unsupported argument type: {type(object)} for buffer {object}")
+            raise ValueError(
+                f"Unsupported argument type: {type(object)} for buffer {object}"
+            )
 
     dst_ptr = retrieve_ptr(dst, "r")
     src0_ptr = retrieve_ptr(src0, "r")
@@ -260,29 +325,70 @@ def select(dst: Union[Buffer, BufferRegion], selMask: Buffer, src0: Union[Buffer
     sel_mask_ptr = selMask.access_ptr("r")
     src0_extent = src0_shape
 
-    assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_SCALAR_MODE", "VSEL_TENSOR_TENSOR_MODE"]
+    assert selMode in [
+        "VSEL_CMPMASK_SPR",
+        "VSEL_TENSOR_SCALAR_MODE",
+        "VSEL_TENSOR_TENSOR_MODE",
+    ]
 
     sel_mode = f"AscendC::SELMODE::{selMode}"
     size_0 = math.prod(src0_extent)
 
     if isinstance(src1, BufferLoad):
-        assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
+        assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], (
+            "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
+        )
 
         src1_type = 0
         buffer_1 = src1.buffer
         indices_1 = src1.indices
-        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, buffer_1.access_ptr("r"), indices_1[0], sel_mode, size_0)
+        return tir.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_select"),
+            dst_ptr,
+            sel_mask_ptr,
+            src0_ptr,
+            src1_type,
+            buffer_1.access_ptr("r"),
+            indices_1[0],
+            sel_mode,
+            size_0,
+        )
     elif isinstance(src1, (PrimExpr, float)):
-        assert selMode == "VSEL_TENSOR_SCALAR_MODE", "selMode must be VSEL_TENSOR_SCALAR_MODE"
+        assert selMode == "VSEL_TENSOR_SCALAR_MODE", (
+            "selMode must be VSEL_TENSOR_SCALAR_MODE"
+        )
 
         src1_type = 1
-        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1, sel_mode, size_0)
+        return tir.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_select"),
+            dst_ptr,
+            sel_mask_ptr,
+            src0_ptr,
+            src1_type,
+            src1,
+            sel_mode,
+            size_0,
+        )
     else:
-        assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
+        assert selMode in ["VSEL_CMPMASK_SPR", "VSEL_TENSOR_TENSOR_MODE"], (
+            "selMode must be VSEL_CMPMASK_SPR or VSEL_TENSOR_TENSOR_MODE"
+        )
 
         src1_type = 2
         src1_ptr = src1.access_ptr("r")
-        return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_select"), dst_ptr, sel_mask_ptr, src0_ptr, src1_type, src1_ptr, sel_mode, size_0)
+        return tir.call_intrin(
+            "handle",
+            tir.op.Op.get("tl.ascend_select"),
+            dst_ptr,
+            sel_mask_ptr,
+            src0_ptr,
+            src1_type,
+            src1_ptr,
+            sel_mode,
+            size_0,
+        )
 
 
 def init_sort_buf(buffer: Buffer, num, rsv):
