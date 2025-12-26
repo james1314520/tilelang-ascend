@@ -32,9 +32,29 @@ def fill(buffer: Buffer, value: PrimExpr):
                          value, size)
 
 
-def arith_progression(buffer: Buffer, first_value, diff_value, count):
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_arith_progression"), f"AscendC::ArithProgression<{_dtype(buffer)}>",
-                           buffer.access_ptr("w"), first_value, diff_value, count)
+def arith_progression(
+    buffer: Buffer, first_value: PrimExpr, diff_value: PrimExpr, count: PrimExpr
+):
+    """Generates an arithmetic progression sequence in a buffer.
+
+    Args:
+        buffer: The destination buffer where the sequence will be stored.
+        first_value: The starting value of the arithmetic progression.
+        diff_value: The difference (step) between consecutive values.
+        count: The number of elements to generate.
+
+    Returns:
+        A TVM intrinsic call that performs the arithmetic progression operation.
+    """
+    return tir.call_intrin(
+        "handle",
+        tir.op.Op.get("tl.ascend_arith_progression"),
+        f"AscendC::ArithProgression<{_dtype(buffer)}>",
+        buffer.access_ptr("w"),
+        first_value,
+        diff_value,
+        count,
+    )
 
 
 def sort(dst: BufferRegion, src: Buffer, indices: Buffer, tmp_buffer: Buffer, repeat_time):
