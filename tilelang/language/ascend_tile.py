@@ -417,21 +417,6 @@ def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
     )
 
 
-def brcb(dst: Buffer, src: Buffer, repeat_times: PrimExpr, dst_blk_stride: PrimExpr,
-         dst_repeat_stride: PrimExpr):
-    """AscendC brcb wrapper
-    """
-
-    src_size = math.prod(src.shape)
-    assert src_size >= (repeat_times * 8), "src size must be not less then repeat_times * 8"
-
-    src_ptr = src.access_ptr("r")
-    dst_ptr = dst.access_ptr("w")
-
-    return T.call_extern("handle", f"tl::ascend::brcb<{_dtype(src)}>", dst_ptr, src_ptr,
-                         repeat_times, dst_blk_stride, dst_repeat_stride)
-
-
 def binary_op(dst: Union[Buffer, BufferRegion], src0: Union[Buffer, BufferRegion],
               src1: Union[Buffer, BufferLoad, PrimExpr, float], op: str):
 
