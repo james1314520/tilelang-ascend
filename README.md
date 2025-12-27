@@ -18,6 +18,8 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 ## Latest News
 
+- 27/12/2025 🚀: We are excited to announce support for developer mode, enabling programming consistency across different hardware architectures. Check out [Pull Request#173](https://github.com/tile-ai/tilelang-ascend/pull/173) for details!
+
 - 16/12/2025 🚀: Support for developer mode memory op (T.alloc_shared, T.alloc_fragment), check out [Pull Request#129](
 https://github.com/tile-ai/tilelang-ascend/pull/129) for details!
 
@@ -215,6 +217,48 @@ def test_vec_add():
 if __name__ == "__main__":
     test_vec_add()
   ```
+
+### GEMM Example using developer mode
+
+The developer mode approach simplifies code portability across different hardware. Below is a basic matrix multiplication (GEMM) example demonstrating its implementation.
+
+```python
+# To run on Ascend NPU, Specify npuir as target in JIT
+@tilelang.jit(out_idx=[-1], target="npuir")
+def matmul(M, N, K, block_M, block_N, block_K, dtype="float16", accum_dtype="float32"):
+    @T.prim_func
+    def gemm(
+        A: T.Tensor((M, K), dtype), # Input matrix A
+        B: T.Tensor((K, N), dtype), # Input matrix B
+        C: T.Tensor((M, N), dtype), # Output matrix C
+    ):
+        with T.Kernel(T.ceildiv(N, block_N) * T.ceildiv(M, block_M), is_npu=True) as (cid, _):
+          
+            by = cid // T.ceildiv(N, block_N) # Block row index
+            bx = cid % T.ceildiv(N, block_N)  # Block column index
+
+            # Alloc shared memory for inputs
+            A_shared = T.alloc_shared((block_M, block_K), dtype)
+            B_shared = T.alloc_shared((block_K, block_N), dtype)
+          
+            # Alloc local fragment for accumulation
+            C_local = T.alloc_fragment((block_M, block_N), accum_dtype)
+
+            # Loop over the K dimension in block_K chunks, using ping-pong
+            for k in T.Pipelined(T.ceildiv(K, block_K), num_stages=2):
+                # Copy the data from global memory to shared memory
+                T.copy(A[by * block_M, k * block_K], A_shared)
+                T.copy(B[k * block_K, bx * block_N], B_shared)
+              
+                # Perform matrix multiplication with accumulation
+                # If 'initC' is true, the result matrix will be initialized to zero before accumulation
+                T.gemm(A_shared, B_shared, C_local, initC=(k == 0))
+
+            # Copy the accumulated result from local memory to global memory
+            T.copy(C_local, C[by * block_M, bx * block_N])
+
+    return gemm
+```
 
 ## Roadmap
 <img src="./images/roadmap.png" alt="插图3" />
