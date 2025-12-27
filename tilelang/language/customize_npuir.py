@@ -78,6 +78,9 @@ def npuir_copy(
         extent = max(src_extent, dst_extent)
     else:
         extent = size
+    src_scope = src.scope() if isinstance(src, tir.Buffer) else src.buffer.scope()
+    if src_scope == "local.fragment":
+        return npuir_store_fixpipe(src, dst, size=extent, enable_nz2nd=True)
     src = _to_region(src, "r", extent)
     dst = _to_region(dst, "w", extent)
 
