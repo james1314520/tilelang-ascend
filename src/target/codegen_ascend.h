@@ -68,7 +68,7 @@ private:
 
   void UnaryVecOpCodegen(const CallNode *op, const std::string& op_name);
 
-  void ScalarOpCodegen(const CallNode *op);
+  void ScalarOpCodegen(const CallNode *op, const std::string& op_name);
 
   void ShiftOpCodegen(const CallNode *op, const std::string& op_name);
 
@@ -118,7 +118,7 @@ private:
 
   void SetDeqScaleCodegen(const CallNode *op, const std::string& op_name);
 
-  void PowerOpCodegen(const CallNode *op);
+  void PowerOpCodegen(const CallNode *op, const std::string& op_name);
 
   void BroadcastOpCodegen(const CallNode *op);
 

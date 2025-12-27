@@ -69,14 +69,12 @@ def fill(buffer: Buffer, value: PrimExpr):
     Returns:
         A TVM intrinsic call that performs the fill operation
     """
-    # AscendC::Duplicate(ubOut, value, Len);
-
     size = math.prod(buffer.shape)
 
     return tir.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_fill"),
-        f"AscendC::Duplicate<{_dtype(buffer)}>",
+        f"tl::ascend::Fill<{_dtype(buffer)}>",
         buffer.access_ptr("w"),
         value,
         size,
@@ -100,7 +98,7 @@ def arith_progression(
     return tir.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_arith_progression"),
-        f"AscendC::ArithProgression<{_dtype(buffer)}>",
+        f"tl::ascend::ArithProgression<{_dtype(buffer)}>",
         buffer.access_ptr("w"),
         first_value,
         diff_value,
@@ -135,7 +133,7 @@ def sort(
     return tir.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_sort"),
-        f"AscendC::Sort<{_dtype(dst)}, true>",
+        f"tl::ascend::Sort<{_dtype(dst)}, true>",
         dst_ptr,
         src.access_ptr("r"),
         indices.access_ptr("r"),
@@ -351,7 +349,6 @@ def select(
         "VSEL_TENSOR_TENSOR_MODE",
     ]
 
-    sel_mode = f"AscendC::SELMODE::{selMode}"
     size_0 = math.prod(src0_extent)
 
     if isinstance(src1, BufferLoad):
@@ -371,7 +368,7 @@ def select(
             src1_type,
             buffer_1.access_ptr("r"),
             indices_1[0],
-            sel_mode,
+            selMode,
             size_0,
         )
     elif isinstance(src1, (PrimExpr, float)):
@@ -388,7 +385,7 @@ def select(
             src0_ptr,
             src1_type,
             src1,
-            sel_mode,
+            selMode,
             size_0,
         )
     else:
@@ -406,7 +403,7 @@ def select(
             src0_ptr,
             src1_type,
             src1_ptr,
-            sel_mode,
+            selMode,
             size_0,
         )
 
@@ -677,7 +674,7 @@ def bitwise_not(dst: Buffer, src0: Buffer):
 
 
 def scalar_op(
-    dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_ascend: str, op_tl: str
+    dst: Buffer, src0: Buffer, scalar_value: PrimExpr, op_tl: str
 ):
     size_0 = math.prod(src0.shape)
     size_2 = math.prod(dst.shape)
@@ -687,7 +684,6 @@ def scalar_op(
     return tir.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_" + op_tl),
-        f"AscendC::{op_ascend}<{_dtype(src0)}>",
         dst.access_ptr("w"),
         src0.access_ptr("r"),
         scalar_value,
@@ -705,7 +701,7 @@ def leaky_relu(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
         src0: The source buffer.
         scalar_value: The negative slope coefficient.
     """
-    return scalar_op(dst, src0, scalar_value, "LeakyRelu", "leaky_relu")
+    return scalar_op(dst, src0, scalar_value, "leaky_relu")
 
 
 def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
@@ -719,7 +715,7 @@ def axpy(dst: Buffer, src0: Buffer, scalar_value: PrimExpr):
         src0: The source buffer X.
         scalar_value: The scalar alpha.
     """
-    return scalar_op(dst, src0, scalar_value, "Axpy", "axpy")
+    return scalar_op(dst, src0, scalar_value, "axpy")
 
 
 def bitwise_lshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
@@ -861,15 +857,11 @@ def reduce(out: Buffer, buffer: Buffer, tmp: Buffer, reduce_type: str, dim: int)
     buffer = buffer.access_ptr("r")
     out = out.access_ptr("w")
     tmp = tmp.access_ptr("r")
-    if dim == -1:
-        pattern = "AscendC::Pattern::Reduce::AR"
-    else:
-        pattern = "AscendC::Pattern::Reduce::RA"
 
     return T.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_reduce"),
-        f"tl::ascend::{reduce_type}<{dtype}, {shape}, {pattern}>",
+        f"tl::ascend::{reduce_type}<{dtype}, {shape}, {dim}>",
         out,
         buffer,
         tmp,
@@ -1058,15 +1050,12 @@ def compare(
     assert mode in ["EQ", "NE", "GT", "GE", "LT", "LE"]
 
     dst_ptr = dst.access_ptr("w")
-    dst_extent = dst.shape
 
     src0_ptr = src0.access_ptr("r")
     src0_extent = src0.shape
 
-    size_0 = math.prod(dst_extent)
     size_1 = math.prod(src0_extent)
 
-    cmp_mode = f"AscendC::CMPMODE::{mode}"
     dst_size = size_1
 
     if isinstance(src1, BufferLoad):
@@ -1079,7 +1068,7 @@ def compare(
             src0_ptr,
             buffer_1.access_ptr("r"),
             indices_1[0],
-            cmp_mode,
+            mode,
             dst_size,
         )
     elif isinstance(src1, (PrimExpr, float)):
@@ -1089,7 +1078,7 @@ def compare(
             dst_ptr,
             src0_ptr,
             src1,
-            cmp_mode,
+            mode,
             dst_size,
         )
     else:
@@ -1099,7 +1088,7 @@ def compare(
             dst_ptr,
             src0_ptr,
             src1.access_ptr("r"),
-            cmp_mode,
+            mode,
             dst_size,
         )
 
@@ -1133,14 +1122,12 @@ def cast(dst: Buffer, src: Buffer, mode: str, count: PrimExpr):
         "CAST_ODD",
     ]
 
-    round_mode = f"AscendC::RoundMode::{mode}"
-
     return T.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_cast"),
         dst.access_ptr("w"),
         src.access_ptr("r"),
-        round_mode,
+        mode,
         count,
     )
 
@@ -1212,7 +1199,6 @@ def pow(dst: Buffer, src0: Buffer, src1: Buffer, tmp: Buffer):
     return tir.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_pow"),
-        f"AscendC::Power<{_dtype(src0)}>",
         dst.access_ptr("w"),
         src0.access_ptr("r"),
         src1.access_ptr("r"),
@@ -1293,7 +1279,7 @@ def broadcast(dst: Buffer, src: Buffer):
     return tir.call_intrin(
         "handle",
         tir.op.Op.get(op_name),
-        f"AscendC::Broadcast<{template_args}>",
+        f"tl::ascend::Broadcast<{template_args}>",
         dst.access_ptr("w"),
         src.access_ptr("r"),
         dim,
