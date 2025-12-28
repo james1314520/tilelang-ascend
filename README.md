@@ -18,18 +18,24 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 ## Latest News
 
-- 27/12/2025 🚀: We are excited to announce support for developer mode, enabling programming consistency across different hardware architectures. Check out [Pull Request#173](https://github.com/tile-ai/tilelang-ascend/pull/173) for details!
+- 12/28/2025 🚀: Support for CV automatic pipelining, enabling parallel collaboration between Cube and Vector cores to boost performance.
 
-- 16/12/2025 🚀: Support for developer mode memory op (T.alloc_shared, T.alloc_fragment), check out [Pull Request#129](
+- 12/28/2025 🚀: Support for automatic buffer reuse, enabling improved memory efficiency and concurrent execution of data movement and computation.
+
+- 12/28/2025 🚀: Support for T.Parallel with automatic vectorization, enabling scalar operations to be automatically converted to vector computations.
+
+- 12/27/2025 🚀: We are excited to announce support for developer mode, enabling programming consistency across different hardware architectures. Check out [Pull Request#173](https://github.com/tile-ai/tilelang-ascend/pull/173) for details!
+
+- 12/16/2025 🚀: Support for developer mode memory op (T.alloc_shared, T.alloc_fragment), check out [Pull Request#129](
 https://github.com/tile-ai/tilelang-ascend/pull/129) for details!
 
-- 9/12/2025 🚀: Support for additional vector ops (VFlip, VLn, VNot, VAbs, VAnd, VOr, VCmp, VPad, VPow, VRec, VRelu, VRSqrt, VSel, VShl, VShr, VXor, VTranspose, VInterleave, VGather)!
+- 12/09/2025 🚀: Support for additional vector ops (VFlip, VLn, VNot, VAbs, VAnd, VOr, VCmp, VPad, VPow, VRec, VRelu, VRSqrt, VSel, VShl, VShr, VXor, VTranspose, VInterleave, VGather)!
 
-- 9/12/2025 🚀: Support compilation based on MLIR APIs and fully replace the previous string-based implementation, providing a robust and extensible compilation process!
+- 12/09/2025 🚀: Support compilation based on MLIR APIs and fully replace the previous string-based implementation, providing a robust and extensible compilation process!
 
-- 21/11/2025 🚀: Support integrated compilation of open source AscendNPU-IR together with TileLang, easing the compilation experience!
+- 11/21/2025 🚀: Support integrated compilation of open source AscendNPU-IR together with TileLang, easing the compilation experience!
 
-- 29/09/2025 🚀: Officially establish the NPU Intermediate Representation (AscendNPU IR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
+- 09/29/2025 🚀: Officially establish the NPU Intermediate Representation (AscendNPU IR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
 
 ## Tested Devices
 Although TileLang aims to support portability across a variety of devices, it has been specifically tested and validated on the following hardware:Huawei Ascend AI accelerators,including Ascend 910B/C.
