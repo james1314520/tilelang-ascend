@@ -18,11 +18,13 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 ## Latest News
 
-- 12/28/2025 🚀: Support for CV automatic pipelining, enabling parallel collaboration between Cube and Vector cores to boost performance.
+- 12/28/2025 🚀: Support for CV automatic pipelining (T.Pipelined), enabling parallel collaboration between Cube and Vector cores to boost performance. Check out [Pull Request#181](https://github.com/tile-ai/tilelang-ascend/pull/181) for details!
 
-- 12/28/2025 🚀: Support for automatic buffer reuse, enabling improved memory efficiency and concurrent execution of data movement and computation.
+- 12/29/2025 🚀: Support for double buffer, enabling concurrent computation and data transfer. Automatically takes effect in developer mode.
 
-- 12/28/2025 🚀: Support for T.Parallel with automatic vectorization, enabling scalar operations to be automatically converted to vector computations.
+- 12/28/2025 🚀: Support for automatic buffer reuse, enabling improved memory efficiency. Automatically takes effect in developer mode.
+
+- 12/28/2025 🚀: Support for T.Parallel with automatic vectorization, enabling scalar operations to be automatically converted to vector computations. Check out [Pull Request#171](https://github.com/tile-ai/tilelang-ascend/pull/171) for details!
 
 - 12/27/2025 🚀: We are excited to announce support for developer mode, enabling programming consistency across different hardware architectures. Check out [Pull Request#173](https://github.com/tile-ai/tilelang-ascend/pull/173) for details!
 
@@ -36,6 +38,12 @@ https://github.com/tile-ai/tilelang-ascend/pull/129) for details!
 - 11/21/2025 🚀: Support integrated compilation of open source AscendNPU-IR together with TileLang, easing the compilation experience!
 
 - 09/29/2025 🚀: Officially establish the NPU Intermediate Representation (AscendNPU IR) infrastructure for Ascend within the TileLang ecosystem, deeply integrating into the open-source AI compiler ecosystem based on MLIR. At the same time, deliver peak performance—fusion operators such as FlashAttention (FA) written in TileLang achieve performance on Ascend hardware that matches hand-written AscendC equivalents at a 1.0x level, balancing both development efficiency and ultimate performance!
+
+## Environment Variables Guide
+Currently, we need to set environment variables to configure the developer mode or expert mode. For more environment variables, please refer to the [EnvironmentVariables.md](https://github.com/tile-ai/tilelang-ascend/tree/npuir/docs/developer/EnvironmentVariables.md)
+| Variable | Default | Description | Valid Values |
+|----------|---------|-------------|--------------|
+| `TILELANG_ASCEND_MODE` | Expert | Set the TileLang Mode; currently, Expert mode and Developer mode are supported | `Expert`: Expert Mode<br>`Developer`: Developer Mode |
 
 ## Tested Devices
 Although TileLang aims to support portability across a variety of devices, it has been specifically tested and validated on the following hardware:Huawei Ascend AI accelerators,including Ascend 910B/C.
