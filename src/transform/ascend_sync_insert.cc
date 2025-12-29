@@ -26,7 +26,7 @@
 
 #include <tvm/runtime/registry.h>
 #include <tvm/tir/expr.h>
-#include <tvm/ir/printer.h>
+
 
 #include "../op/builtin.h"
 #include "./common/collector.h"
@@ -41,21 +41,6 @@ static constexpr const char *kAscendAutoSync = "tl.ascend_auto_sync";
 
 TVM_REGISTER_PASS_CONFIG_OPTION(kAscendAutoSync, Bool);
 
-
-
-static inline bool is_call_intrin(const CallNode* node){
-  std::string text = AsText(GetRef<Call>(node));
-  std::cout << "CallNode as text: " << text << std::endl;
-  if (node->op.as<OpNode>()) {
-    auto op = Downcast<Op>(node->op);
-    std::cout << "opname: " << op->name << std::endl;
-    if(op->name == "tir.call_intrin") {
-      std::cout << "+++++++++++++++++++++hit+++++++++++++++++" << std::endl;
-      return true;
-    }
-  }
-  return false;
-}
 
 class AscendSyncInsert : public arith::IRMutatorWithAnalyzer {
 public:
@@ -812,14 +797,15 @@ private:
         return StructuralEqual()(stmt1, stmt2);
       } else if (call1->op.same_as(call2->op)) {
         // call_intrin 判断
-        std::string op_name;
-        if (auto* op_ptr = call1->op.as<OpNode>()) {
-            op_name = op_ptr->name;
-            auto config_it = operation_config_.find(op_name);
-            if (config_it == operation_config_.end()){
-                return false;
-            }
-        }
+        // std::string op_name;
+        // if (auto* op_ptr = call1->op.as<OpNode>()) {
+        //     op_name = op_ptr->name;
+        //     auto config_it = operation_config_.find(op_name);
+        //     if (config_it == operation_config_.end()){
+        //         return false;
+        //     }
+        // }
+
         // todo AutoBarrier
 
         return StructuralEqual()(stmt1, stmt2);
