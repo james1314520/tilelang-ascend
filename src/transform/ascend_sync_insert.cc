@@ -23,6 +23,7 @@
 #include <tvm/tir/stmt_functor.h>
 #include <tvm/tir/transform.h>
 #include <tvm/tir/utils.h>
+
 #include <tvm/runtime/registry.h>
 #include <tvm/tir/expr.h>
 #include <tvm/ir/printer.h>
@@ -185,13 +186,67 @@ private:
       {"AscendC::Duplicate", {{{0, "write"}}, "PIPE_V"}},
       {"AscendC::Muls", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
       {"AscendC::And", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
-      {"reduce_max", {{{0, "read"}, {1, "write"}}, "PIPE_V"}},
-      {"reduce_max", {{{0, "read"}, {1, "write"}}, "PIPE_V"}},
-      {"reduce_sum", {{{0, "read"}, {1, "write"}}, "PIPE_V"}},
+      {"reduce_max", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"reduce_min", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"reduce_sum", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
       {"AscendC::Max", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
       {"AscendC::Sin", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
       {"AscendC::Cos", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
       {"AscendC::Cast", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+
+      {"tl.ascend_add", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_adds", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_mul", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_muls", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_sub", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_subs", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_div", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_divs", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_max", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_min", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_and", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_or", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_compare", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_compare_scalar", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_exp", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_ln", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_abs", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_reciprocal", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_sqrt", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_rsqrt", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_relu", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_not", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_select", {{{0, "write"}, {1, "read"}, {2, "read"}, {4, "read"}}, "PIPE_V"}},
+      {"tl.ascend_leaky_relu", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_axpy", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_lshift", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_rshift", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_sort32", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_createvecindex", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_sin", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_cos", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_transpose", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_gather", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_reduce", {{{1, "write"}, {2, "read"}, {3, "read"}}, "PIPE_V"}},
+      {"tl.ascend_block_reduce_max", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_block_reduce_min", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+      {"tl.ascend_block_reduce_sum", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+
+      {"tl.ascend_scalar", {{{0, "write"}, {1, "read"}}, "PIPE_S"}},
+      {"tl.ascend_gatherb", {{{1, "write"}, {2, "read"}, {3, "read"}}, "PIPE_V"}},
+      {"tl.ascend_duplicate", {{{0, "write"}}, "PIPE_V"}},
+      {"tl.ascend_cast", {{{0, "write"}, {1, "read"}}, "PIPE_V"}},
+
+      {"tl.ascend_pow", {{{0, "write"}, {1, "read"}, {2, "read"}, {3, "read"}}, "PIPE_V"}},
+      {"tl.ascend_bitwise_xor", {{{0, "write"}, {1, "read"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_broadcast", {{{1, "write"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_fill", {{{1, "write"}}, "PIPE_V"}},
+      {"tl.arith_progression", {{{1, "write"}}, "PIPE_V"}},
+      {"tl.ascend_sort", {{{1, "write"}, {2, "read"}, {3, "read"}, {4, "read"}}, "PIPE_V"}},
+      {"tl.ascend_merge_sort", {{{1, "write"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_topk", {{{1, "write"}, {2, "read"}, {3, "read"}}, "PIPE_V"}},
+      {"tl.ascend_gather_mask", {{{1, "write"}, {2, "read"}}, "PIPE_V"}},
+      {"tl.ascend_init_sort_buf", {{{1, "write"}}, "PIPE_V"}},
     };
   }
 
@@ -678,7 +733,7 @@ private:
     bool IsSyncStatement(const Stmt& stmt) {
       if (auto eval = stmt.as<EvaluateNode>()) {
         if (auto call = eval->value.as<CallNode>()) {
-          if (call->op.same_as(builtin::call_extern()) || is_call_intrin(call)) {
+          if (call->op.same_as(builtin::call_extern())) {
             auto func_name_imm = call->args[0].as<StringImmNode>();
             if (func_name_imm) {
               std::string func_name = func_name_imm->value;
@@ -714,47 +769,63 @@ private:
 
       auto call1 = eval1->value.as<CallNode>();
       auto call2 = eval2->value.as<CallNode>();
-      if (!call1 || !call2 || !call1->op.same_as(builtin::call_extern()) || !call2->op.same_as(builtin::call_extern())
-          || !is_call_intrin(call1) || !is_call_intrin(call2)) {
+      if (!call1 || !call2 ) {
         return false;
       }
 
-      auto func_name1 = call1->args[0].as<StringImmNode>();
-      auto func_name2 = call2->args[0].as<StringImmNode>();
-      if (!func_name1 || !func_name2) {
-        return false;
-      }
-
-      std::string name1 = func_name1->value;
-      std::string name2 = func_name2->value;
-
-      if (name1 != name2) {
-        return false;
-      }
-
-      if (name1.find("AutoBarrier") != std::string::npos) {
-        if (call1->args.size() >= 2 && call2->args.size() >= 2) {
-          auto pipeline1 = call1->args[1].as<StringImmNode>();
-          auto pipeline2 = call2->args[1].as<StringImmNode>();
-          if (pipeline1 && pipeline2) {
-            return pipeline1->value == pipeline2->value;
-          }
+      if (call1->op.same_as(builtin::call_extern()) && call2->op.same_as(builtin::call_extern())) {
+        auto func_name1 = call1->args[0].as<StringImmNode>();
+        auto func_name2 = call2->args[0].as<StringImmNode>();
+        if (!func_name1 || !func_name2) {
+          return false;
         }
-        return false;
-      }
 
-      if (name1.find("AutoSetFlag") != std::string::npos || name1.find("AutoWaitFlag") != std::string::npos) {
-        if (call1->args.size() >= 3 && call2->args.size() >= 3) {
-            auto event_type1 = call1->args[1].as<StringImmNode>();
-            auto event_type2 = call2->args[1].as<StringImmNode>();
-            if (event_type1 && event_type2) {
-                return event_type1->value == event_type2->value;
+        std::string name1 = func_name1->value;
+        std::string name2 = func_name2->value;
+
+        if (name1 != name2) {
+          return false;
+        }
+
+        if (name1.find("AutoBarrier") != std::string::npos) {
+          if (call1->args.size() >= 2 && call2->args.size() >= 2) {
+            auto pipeline1 = call1->args[1].as<StringImmNode>();
+            auto pipeline2 = call2->args[1].as<StringImmNode>();
+            if (pipeline1 && pipeline2) {
+              return pipeline1->value == pipeline2->value;
+            }
+          }
+          return false;
+        }
+
+        if (name1.find("AutoSetFlag") != std::string::npos || name1.find("AutoWaitFlag") != std::string::npos) {
+          if (call1->args.size() >= 3 && call2->args.size() >= 3) {
+              auto event_type1 = call1->args[1].as<StringImmNode>();
+              auto event_type2 = call2->args[1].as<StringImmNode>();
+              if (event_type1 && event_type2) {
+                  return event_type1->value == event_type2->value;
+              }
+          }
+          return false;
+        }
+
+        return StructuralEqual()(stmt1, stmt2);
+      } else if (call1->op.same_as(call2->op)) {
+        // call_intrin 判断
+        std::string op_name;
+        if (auto* op_ptr = call1->op.as<OpNode>()) {
+            op_name = op_ptr->name;
+            auto config_it = operation_config_.find(op_name);
+            if (config_it == operation_config_.end()){
+                return false;
             }
         }
-        return false;
+        // todo AutoBarrier
+
+        return StructuralEqual()(stmt1, stmt2);
       }
 
-      return StructuralEqual()(stmt1, stmt2);
+      return false;
     }
 
     std::vector<Stmt> FlattenStmts(const Stmt& stmt) {
@@ -1115,7 +1186,7 @@ private:
 
     if (auto eval = stmt.as<EvaluateNode>()) {
       if (auto call = eval->value.as<CallNode>()) {
-        if (call->op.same_as(builtin::call_extern()) || is_call_intrin(call)) {
+        if (call->op.same_as(builtin::call_extern())) {
           std::string func_name = Downcast<StringImm>(call->args[0])->value;
 
           std::string normalized_name = NormalizeFunctionName(func_name);
@@ -1160,6 +1231,58 @@ private:
 
             for (const auto& pair : buffer_access_map) {
               accesses.push_back(pair.second);
+            }
+          }
+        }
+        else { //
+          std::string op_name;
+          if (auto* op_ptr = call->op.as<OpNode>()) {
+            op_name = op_ptr->name;
+
+            std::string normalized_name = op_name;
+
+            auto config_it = operation_config_.find(normalized_name);
+            if (config_it != operation_config_.end()) {
+              const auto& config = config_it->second;
+
+              std::unordered_map<std::string, BufferAccess> buffer_access_map;
+
+              for (const auto& buffer_config : config.buffer_accesses) {
+                size_t arg_index = buffer_config.first;
+                const std::string& access_type = buffer_config.second;
+
+                if (arg_index < call->args.size()) {
+                  auto buffer_info = ExtractBufferInfoFromAccessPtr(call->args[arg_index]);
+                  if (!buffer_info.buffer_name.empty()) {
+                    bool is_write = (access_type == "write");
+
+                    if (buffer_access_map.find(buffer_info.buffer_name) != buffer_access_map.end()) {
+                      BufferAccess& existing_access = buffer_access_map[buffer_info.buffer_name];
+                      if (is_write || (!existing_access.is_write && is_write)) {
+                        existing_access.is_write = true;
+                      }
+                      existing_access.is_sliced = existing_access.is_sliced || buffer_info.is_sliced;
+                    } else {
+                      BufferAccess access;
+                      access.sync_graph = SyncGraph();
+                      access.pipe_barriers = {};
+                      access.physical_address = GetPhysicalAddress(buffer_info.buffer_name);
+
+                      access.buffer_name = buffer_info.buffer_name;
+                      access.is_write = is_write;
+                      access.pipeline = config.default_pipeline;
+                      access.operation = normalized_name;
+                      access.is_sliced = buffer_info.is_sliced;
+
+                      buffer_access_map[buffer_info.buffer_name] = access;
+                    }
+                  }
+                }
+              }
+
+              for (const auto& pair : buffer_access_map) {
+                accesses.push_back(pair.second);
+              }
             }
           }
         }
