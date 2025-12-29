@@ -403,7 +403,7 @@ TIR_DEFINE_TL_BUILTIN(ascend_arith_progression)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
 TIR_DEFINE_TL_BUILTIN(ascend_sort)
-    .set_num_inputs(7)
+    .set_num_inputs(6)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 
 TIR_DEFINE_TL_BUILTIN(ascend_merge_sort)

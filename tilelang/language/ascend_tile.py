@@ -138,7 +138,6 @@ def sort(
         src.access_ptr("r"),
         indices.access_ptr("r"),
         tmp_buffer.access_ptr("r"),
-        dst_size,
         repeat_time,
     )
 

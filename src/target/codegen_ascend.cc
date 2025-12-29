@@ -1360,12 +1360,12 @@ void CodeGenTileLangAscend::ArithProgressionCodegen(const CallNode *op) {
 void CodeGenTileLangAscend::SortCodegen(const CallNode *op) {
   std::string op_name = Downcast<StringImm>(op->args[0])->value;
   std::vector<std::string> var_names;
-  for (int i = 1; i < op->args.size() - 3; i++) {
+  for (int i = 1; i < op->args.size() - 2; i++) {
     auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
     var_names.push_back(var_name);
   }
 
-  auto var_name = PrintBufferOffset(op->args[op->args.size() - 3].as<CallNode>(),
+  auto var_name = PrintBufferOffset(op->args[op->args.size() - 2].as<CallNode>(),
                           false); // tensor with offset will be
   var_names.push_back(var_name);
 
