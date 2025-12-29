@@ -1,4 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025.
+import os
 import torch
 import tilelang
 import tilelang.language as T
@@ -31,6 +32,9 @@ def matmul(M, N, K, block_M, block_N, block_K, dtype="float16", accum_dtype="flo
 
 
 def main():
+    # In the futrue, Developer mode and Expert Mode will transition smoothly without
+    # requiring explicit declarations.
+    os.environ['TILELANG_ASCEND_MODE'] = 'Developer'
     kernel = matmul(1024, 1024, 1024, 128, 128, 32)
 
     a = torch.randn(1024, 1024).npu().half()
