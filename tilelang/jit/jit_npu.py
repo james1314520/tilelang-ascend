@@ -899,7 +899,15 @@ class compiler_npu:
         self.constants = {}
         # get signature information
         self.signature = self._parse_signature()
-        self.workspace_size = -1
+        # TODO: Will be implemented as automatic derivation in the future
+        self.workspace_size = 32768
+        TILELANG_ASCEND_WORKSPACE_SIZE = os.environ.get('TILELANG_ASCEND_WORKSPACE_SIZE')
+        if not TILELANG_ASCEND_WORKSPACE_SIZE is None:
+          try:
+              self.workspace_size = int(TILELANG_ASCEND_WORKSPACE_SIZE)
+          except ValueError:
+              print(f"Warning: TILELANG_ASCEND_WORKSPACE_SIZE must be integer, \
+                    got '{TILELANG_ASCEND_WORKSPACE_SIZE}', using default 32768")
         self.lock_num = -1
         self.lock_ini_val = 0
         self._parse_npuir_metadata()
@@ -1081,9 +1089,14 @@ class compiler_npu:
             _compile_option_list = [
                 "--enable-auto-multi-buffer=true",
                 "--enable-triton-kernel-compile=true",
-                "--enable-hivm-compile=true",
-                "--disable-hivm-tensor-compile=true",
+                "--enable-hivm-compile=true"
             ]
+
+            TILELANG_ASCEND_MODE = os.environ.get('TILELANG_ASCEND_MODE')
+            if TILELANG_ASCEND_MODE is None:
+                _compile_option_list.append("--disable-hivm-tensor-compile=true")
+            elif TILELANG_ASCEND_MODE.lower().strip() in ['expert', 'exp', 'e']:
+                _compile_option_list.append("--disable-hivm-tensor-compile=true")
 
             cmd_list = (
                 [npu_compiler_path, ttadapter_path]

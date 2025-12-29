@@ -158,7 +158,13 @@ def host_codegen(host_mod: tvm.IRModule, target_host: Target) -> tvm.IRModule:
 def device_codegen(device_mod: tvm.IRModule, target: Target) -> tvm.IRModule:
     if target.kind.name == "npuir":
         # device_mod = tvm._ffi.get_global_func("target.build.tilelang_npuir")(device_mod, target)
-        device_mod = tvm._ffi.get_global_func("target.build.tilelang_npuir_apis")(device_mod, target)
+        TILELANG_ASCEND_MODE = os.environ.get('TILELANG_ASCEND_MODE')
+        if TILELANG_ASCEND_MODE is None:
+            device_mod = tvm._ffi.get_global_func("target.build.tilelang_npuir_apis")(device_mod, target)
+        elif TILELANG_ASCEND_MODE.lower().strip() in ['expert', 'exp', 'e']:
+            device_mod = tvm._ffi.get_global_func("target.build.tilelang_npuir_apis")(device_mod, target)
+        else:
+            device_mod = tvm._ffi.get_global_func("target.build.tilelang_npuir_dev")(device_mod, target)
         return device_mod
     device_mod = tilelang.transform.LowerDeviceStorageAccessInfo()(device_mod)
     device_mod = tir.transform.LowerIntrin()(device_mod)
@@ -233,8 +239,16 @@ def lower(
     # Phase 2: Optimize the IR for the target
     mod = OptimizeForTarget(mod, target)
 
+    TILELANG_DUMP_IR = os.environ.get('TILELANG_DUMP_IR', '').lower()
+    if TILELANG_DUMP_IR in ('true', '1', 'yes', 'on'):
+        print("====== TVM IR ======")
+        print(mod)
+        print()
     if target.kind.name == "npuir":
         codegen_mod = device_codegen(mod, target)
+        if TILELANG_DUMP_IR in ('true', '1', 'yes', 'on'):
+            print("====== npuir ======")
+            print(codegen_mod.get_source())
         return codegen_mod.get_source()
 
     host_mod = tir.transform.Filter(_is_host_call)(mod)
