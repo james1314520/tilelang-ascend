@@ -16,6 +16,7 @@
 #include <tvm/tir/transform.h>
 #include <tvm/tir/utils.h>
 
+#include "../op/ascend.h"
 #include "../op/builtin.h"
 #include "./common/collector.h"
 
@@ -234,7 +235,8 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
                            int64_t element_count,
                            const std::unordered_set<const VarNode*>& parallel_vars,
                            Array<Stmt>* statements) {
-    std::string unary_op_type;
+    Op unary_op_type;
+
     Optional<Buffer> unary_input_buffer;
     PrimExpr unary_input_offset;
 
@@ -247,7 +249,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
 
-    std::string op_type;
+    Op op_type;
     Array<PrimExpr> operands;
 
     if (!IsBinaryOp(expr, &op_type, &operands)) {
@@ -292,7 +294,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return false;
   }
 
-  bool IsUnaryOp(const PrimExpr& expr, std::string* op_type,
+  bool IsUnaryOp(const PrimExpr& expr, Op* op_type,
                  Optional<Buffer>* input_buffer, PrimExpr* input_offset,
                  const std::unordered_set<const VarNode*>& parallel_vars) {
     if (auto call = expr.as<CallNode>()) {
@@ -304,21 +306,21 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         return false;
       }
 
-      std::string ascend_op;
+      Op ascend_op;
 
       if (op_name == "tir.exp") {
-        ascend_op = "AscendC::Exp";
+        ascend_op = tl::ascend_exp();
       } else if (op_name == "tir.log") {
-        ascend_op = "AscendC::Ln";
+        ascend_op = tl::ascend_ln();
       } else if (op_name == "tir.sqrt") {
-        ascend_op = "AscendC::Sqrt";
+        ascend_op = tl::ascend_sqrt();
       } else if (op_name == "tir.rsqrt") {
-        ascend_op = "AscendC::Rsqrt";
+        ascend_op = tl::ascend_rsqrt();
       } else if (op_name == "tir.fabs") {
-        ascend_op = "AscendC::Abs";
+        ascend_op = tl::ascend_abs();
       } else {
-        if (call->op.same_as(builtin::bitwise_not())) {
-          ascend_op = "AscendC::Not";
+        if (call->op.same_as(tl::ascend_bitwise_not())) {
+          ascend_op = tl::ascend_bitwise_not();
         } else {
           return false;
         }
@@ -339,7 +341,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
 
     if (auto max_node = expr.as<MaxNode>()) {
       if (IsZero(max_node->a)) {
-        if (op_type) *op_type = "AscendC::Relu";
+        if (op_type) *op_type = tl::ascend_relu();
         if (auto load = max_node->b.as<BufferLoadNode>()) {
           if (input_buffer) *input_buffer = load->buffer;
           if (input_offset)
@@ -349,7 +351,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         }
       }
       if (IsZero(max_node->b)) {
-        if (op_type) *op_type = "AscendC::Relu";
+        if (op_type) *op_type = tl::ascend_relu();
         if (auto load = max_node->a.as<BufferLoadNode>()) {
           if (input_buffer) *input_buffer = load->buffer;
           if (input_offset)
@@ -362,7 +364,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return false;
   }
 
-  bool HandleSimpleCase(const std::string& op_type,
+  bool HandleSimpleCase(const Op& op_type,
                         const Array<PrimExpr>& operands,
                         const Buffer& output_buffer,
                         const PrimExpr& output_offset,
@@ -410,7 +412,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return false;
   }
 
-  bool HandleLeftSimpleRightComplex(const std::string& op_type,
+  bool HandleLeftSimpleRightComplex(const Op& op_type,
                                     const Array<PrimExpr>& operands,
                                     const Buffer& output_buffer,
                                     const PrimExpr& output_offset,
@@ -440,7 +442,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return true;
   }
 
-  bool HandleLeftComplexRightSimple(const std::string& op_type,
+  bool HandleLeftComplexRightSimple(const Op& op_type,
                                     const Array<PrimExpr>& operands,
                                     const Buffer& output_buffer,
                                     const PrimExpr& output_offset,
@@ -482,10 +484,10 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return false;
   }
 
-  bool IsBinaryOp(const PrimExpr& expr, std::string* op_type,
+  bool IsBinaryOp(const PrimExpr& expr, Op* op_type,
                   Array<PrimExpr>* operands) {
     if (auto node = expr.as<AddNode>()) {
-      if (op_type) *op_type = "AscendC::Add";
+      if (op_type) *op_type = tl::ascend_add();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -493,7 +495,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
     if (auto node = expr.as<SubNode>()) {
-      if (op_type) *op_type = "AscendC::Sub";
+      if (op_type) *op_type = tl::ascend_sub();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -501,7 +503,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
     if (auto node = expr.as<MulNode>()) {
-      if (op_type) *op_type = "AscendC::Mul";
+      if (op_type) *op_type = tl::ascend_mul();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -509,7 +511,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
     if (auto node = expr.as<DivNode>()) {
-      if (op_type) *op_type = "AscendC::Div";
+      if (op_type) *op_type = tl::ascend_div();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -517,7 +519,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
     if (auto node = expr.as<MinNode>()) {
-      if (op_type) *op_type = "AscendC::Min";
+      if (op_type) *op_type = tl::ascend_min();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -525,7 +527,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
       return true;
     }
     if (auto node = expr.as<MaxNode>()) {
-      if (op_type) *op_type = "AscendC::Max";
+      if (op_type) *op_type = tl::ascend_max();
       if (operands) {
         operands->push_back(node->a);
         operands->push_back(node->b);
@@ -534,32 +536,32 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     }
 
     if (auto call = expr.as<CallNode>()) {
-      if (call->op.same_as(builtin::bitwise_and())) {
-        if (op_type) *op_type = "AscendC::And";
+      if (call->op.same_as(tl::ascend_bitwise_and())) {
+        if (op_type) *op_type = tl::ascend_bitwise_and();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
           operands->push_back(call->args[1]);
         }
         return true;
       }
-      if (call->op.same_as(builtin::bitwise_or())) {
-        if (op_type) *op_type = "AscendC::Or";
+      if (call->op.same_as(tl::ascend_bitwise_or())) {
+        if (op_type) *op_type = tl::ascend_bitwise_or();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
           operands->push_back(call->args[1]);
         }
         return true;
       }
-      if (call->op.same_as(builtin::shift_left())) {
-        if (op_type) *op_type = "AscendC::ShiftLeft";
+      if (call->op.same_as(tl::ascend_bitwise_lshift())) {
+        if (op_type) *op_type = tl::ascend_bitwise_lshift();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
           operands->push_back(call->args[1]);
         }
         return true;
       }
-      if (call->op.same_as(builtin::shift_right())) {
-        if (op_type) *op_type = "AscendC::ShiftRight";
+      if (call->op.same_as(tl::ascend_bitwise_rshift())) {
+        if (op_type) *op_type = tl::ascend_bitwise_rshift();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
           operands->push_back(call->args[1]);
@@ -571,7 +573,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     return false;
   }
 
-  Stmt GenerateUnaryVectorCall(const std::string& op_type,
+  Stmt GenerateUnaryVectorCall(const Op& op_type,
                                const Buffer& output_buffer,
                                const PrimExpr& output_offset,
                                const Buffer& input_buffer,
@@ -581,18 +583,18 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     std::string dtype_str = DTypeToString(dtype);
 
     Array<PrimExpr> call_args;
-    call_args.push_back(StringImm(op_type));
+    // call_args.push_back(StringImm(op_type));
     call_args.push_back(CreateAccessPtr(output_buffer, dtype_str, output_offset,
                                         element_count, 2));
     call_args.push_back(CreateAccessPtr(input_buffer, dtype_str, input_offset,
                                         element_count, 1));
     call_args.push_back(IntImm(DataType::Int(32), element_count));
 
-    PrimExpr call = Call(DataType::Handle(), builtin::call_extern(), call_args);
+    PrimExpr call = Call(DataType::Handle(), op_type, call_args);
     return Evaluate(call);
   }
 
-  Stmt GenerateBinaryVectorCall(const std::string& op_type,
+  Stmt GenerateBinaryVectorCall(const Op& op_type,
                                 const Buffer& output_buffer,
                                 const PrimExpr& output_offset,
                                 const Buffer& input_buffer1,
@@ -604,7 +606,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     std::string dtype_str = DTypeToString(dtype);
 
     Array<PrimExpr> call_args;
-    call_args.push_back(StringImm(op_type));
+    // call_args.push_back(StringImm(op_type));
     call_args.push_back(CreateAccessPtr(output_buffer, dtype_str, output_offset,
                                         element_count, 2));
     call_args.push_back(CreateAccessPtr(input_buffer1, dtype_str, input_offset1,
@@ -614,11 +616,11 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     call_args.push_back(IntImm(DataType::Int(32), element_count));
 
     PrimExpr call =
-        Call(DataType::Handle(), builtin::call_extern(), call_args);
+        Call(DataType::Handle(), op_type, call_args);
     return Evaluate(call);
   }
 
-  Stmt GenerateScalarVectorCall(const std::string& op_type,
+  Stmt GenerateScalarVectorCall(const Op& op_type,
                                 const Buffer& output_buffer,
                                 const PrimExpr& output_offset,
                                 const Buffer& input_buffer,
@@ -628,15 +630,26 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     DataType dtype = output_buffer->dtype;
     std::string dtype_str = DTypeToString(dtype);
 
-    static const std::unordered_set<std::string> no_suffix_ops = {
-        "AscendC::ShiftLeft",
-        "AscendC::ShiftRight"};
+    // static const std::unordered_set<std::string> no_suffix_ops = {
+    //     "tl.ascend_bitwise_lshift",
+    //     "tl.ascend_bitwise_rshift"};
 
-    std::string scalar_op_type =
-        no_suffix_ops.count(op_type) > 0 ? op_type : op_type + "s";
+    // std::string scalar_op_type =
+    //     no_suffix_ops.count(op_type) > 0 ? op_type : op_type + "s";
+
+    Op scalar_op_type = op_type;
+    if (op_type.same_as(tl::ascend_add())) {
+      scalar_op_type = tl::ascend_adds();
+    } else if (op_type.same_as(tl::ascend_sub())) {
+      scalar_op_type = tl::ascend_subs();
+    } else if (op_type.same_as(tl::ascend_mul())) {
+      scalar_op_type = tl::ascend_muls();
+    } else if (op_type.same_as(tl::ascend_div())) {
+      scalar_op_type = tl::ascend_divs();
+    }
 
     Array<PrimExpr> call_args;
-    call_args.push_back(StringImm(scalar_op_type));
+    // call_args.push_back(StringImm(scalar_op_type));
     call_args.push_back(CreateAccessPtr(output_buffer, dtype_str, output_offset,
                                         element_count, 2));
     call_args.push_back(CreateAccessPtr(input_buffer, dtype_str, input_offset,
@@ -645,11 +658,11 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     call_args.push_back(IntImm(DataType::Int(32), element_count));
 
     PrimExpr call =
-        Call(DataType::Handle(), builtin::call_extern(), call_args);
+        Call(DataType::Handle(), scalar_op_type, call_args);
     return Evaluate(call);
   }
 
-  Stmt GenerateBufferScalarVectorCall(const std::string& op_type,
+  Stmt GenerateBufferScalarVectorCall(const Op& op_type,
                                       const Buffer& output_buffer,
                                       const PrimExpr& output_offset,
                                       const Buffer& input_buffer,
@@ -660,12 +673,23 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     DataType dtype = output_buffer->dtype;
     std::string dtype_str = DTypeToString(dtype);
 
-    static const std::unordered_set<std::string> no_suffix_ops = {
-        "AscendC::ShiftLeft",
-        "AscendC::ShiftRight"};
+    // static const std::unordered_set<std::string> no_suffix_ops = {
+    //     "tl.ascend_bitwise_lshift",
+    //     "tl.ascend_bitwise_rshift"};
 
-    std::string scalar_op_type =
-        no_suffix_ops.count(op_type) > 0 ? op_type : op_type + "s";
+    // std::string scalar_op_type =
+    //     no_suffix_ops.count(op_type) > 0 ? op_type : op_type + "s";
+
+    Op scalar_op_type = op_type;
+    if (op_type.same_as(tl::ascend_add())) {
+      scalar_op_type = tl::ascend_adds();
+    } else if (op_type.same_as(tl::ascend_sub())) {
+      scalar_op_type = tl::ascend_subs();
+    } else if (op_type.same_as(tl::ascend_mul())) {
+      scalar_op_type = tl::ascend_muls();
+    } else if (op_type.same_as(tl::ascend_div())) {
+      scalar_op_type = tl::ascend_divs();
+    }
 
     int64_t scalar_extent = 1;
     if (scalar_buffer->shape.size() > 0) {
@@ -675,7 +699,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     }
 
     Array<PrimExpr> call_args;
-    call_args.push_back(StringImm(scalar_op_type));
+    // call_args.push_back(StringImm(scalar_op_type));
     call_args.push_back(CreateAccessPtr(output_buffer, dtype_str, output_offset,
                                         element_count, 2));
     call_args.push_back(CreateAccessPtr(input_buffer, dtype_str, input_offset,
@@ -686,9 +710,10 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     call_args.push_back(IntImm(DataType::Int(32), element_count));
 
     PrimExpr call =
-        Call(DataType::Handle(), builtin::call_extern(), call_args);
+        Call(DataType::Handle(), scalar_op_type, call_args);
     return Evaluate(call);
   }
+
 
   bool TryGetElementCount(PrimExpr total_elements, int64_t* out_count) {
     ICHECK(out_count != nullptr);
