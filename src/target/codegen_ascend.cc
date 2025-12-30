@@ -485,32 +485,11 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       this->stream << op_name << "(" << a_name << "[" << a_offset << "],"
                    << b_name << "[" << b_offset << "]," << c_name << "["
                    << c_offset << "], " << PrintExpr(op->args[4]) << ");\n";
-    } else if (op_name.find("AscendC::CrossCoreWaitFlag") !=
-               std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "(" << PrintExpr(op->args[1]) << ");\n";
-    } else if (op_name.find("AscendC::CrossCoreSetFlag") != std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "(" << PrintExpr(op->args[1]) << ");\n";
-    } else if (op_name.find("AscendC::WaitFlag") != std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "(" << PrintExpr(op->args[1]) << ");\n";
-    } else if (op_name.find("AscendC::SetFlag") != std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "(" << PrintExpr(op->args[1]) << ");\n";
-    } else if (op_name.find("PipeBarrier") != std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "();\n";
-    } else if (op_name.find("SyncAll") != std::string::npos) {
-      this->PrintIndent();
-      this->stream << op_name << "();\n";
     } else if (op_name.find("thread_block_swizzle") != std::string::npos) {
       std::string expr = PrintExpr(op->args[1]);
       os << op_name << "("
                    << expr << ")";
-    }
-
-    else if (op_name.find("gemm_v0") != std::string::npos) {
+    } else if (op_name.find("gemm_v0") != std::string::npos) {
       this->PrintIndent();
       auto a_var = op->args[1].as<CallNode>()->args[1].as<VarNode>();
       auto b_var = op->args[2].as<CallNode>()->args[1].as<VarNode>();
@@ -738,6 +717,20 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     PrintOpCall(op, "AscendC::Xor", {0, op->args.size()}, {0, 0});
   } else if (op->op.same_as(tl::ascend_broadcast())) {
     BroadcastOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_wait_cross_flag())) {
+    PrintOpCall(op, "AscendC::CrossCoreWaitFlag", {0, 0}, {0, op->args.size()});
+  } else if (op->op.same_as(tl::ascend_set_cross_flag())) {
+    SetCrossFlagCodegen(op);
+  } else if (op->op.same_as(tl::ascend_wait_flag())) {
+    FlagOpCodegen(op, "AscendC::WaitFlag");
+  } else if (op->op.same_as(tl::ascend_set_flag())) {
+    FlagOpCodegen(op, "AscendC::SetFlag");
+  } else if (op->op.same_as(tl::ascend_barrier_all())) {
+    PipeBarrierCodegen(op, "ALL");
+  } else if (op->op.same_as(tl::ascend_pipe_barrier())) {
+    PipeBarrierCodegen(op);
+  } else if (op->op.same_as(tl::ascend_sync_all())) {
+    PrintOpCall(op, "AscendC::SyncAll<false>", {0, 0}, {0, 0});
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1690,6 +1683,31 @@ void CodeGenTileLangAscend::BroadcastOpCodegen(const CallNode *op) {
   // 4. Src Shape Array
   PrintConstArray(op, 4 + dim, dim);
   this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::SetCrossFlagCodegen(const CallNode *op) {
+  std::string pipe = Downcast<StringImm>(op->args[0])->value;
+  std::string op_name = "AscendC::CrossCoreSetFlag<0x2, PIPE_" + pipe + ">";
+  
+  PrintOpCall(op, op_name, {0, 0}, {1, op->args.size()});
+}
+
+void CodeGenTileLangAscend::FlagOpCodegen(const CallNode *op, std::string op_name) {
+  std::string src = Downcast<StringImm>(op->args[0])->value;
+  std::string dst = Downcast<StringImm>(op->args[1])->value;
+
+  op_name += "<AscendC::HardEvent::" + src + "_" + dst + ">";
+  PrintOpCall(op, op_name, {0, 0}, {2, op->args.size()});
+}
+
+void CodeGenTileLangAscend::PipeBarrierCodegen (const CallNode *op, std::string pipe) {
+  if (pipe.empty()) {
+    pipe = Downcast<StringImm>(op->args[0])->value;
+  }
+  
+  std::string op_name = "AscendC::PipeBarrier<PIPE_" + pipe + ">";
+
+  PrintOpCall(op, op_name, {0, 0}, {0, 0});
 }
 
 } // namespace codegen

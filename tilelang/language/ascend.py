@@ -1,10 +1,7 @@
 import tilelang.language as T
-from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
+from tvm.tir import PrimExpr, Buffer, BufferRegion, Var
 from typing import List, Union, Literal
-from tvm import ir, tir
-import numpy as np
-
-import math
+from tvm import tir
 
 
 def _dtype(buf):
@@ -16,15 +13,15 @@ def _dtype(buf):
 
 
 def wait_cross_flag(flag: int):
-    return T.call_extern("handle", "AscendC::CrossCoreWaitFlag", flag)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_wait_cross_flag"), flag)
 
 
 def set_cross_flag(pipe: str, flag: int):
-    return T.call_extern("handle", f"AscendC::CrossCoreSetFlag<0x2, PIPE_{pipe.upper()}>", flag)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_set_cross_flag"), pipe.upper(), flag)
 
 
 def barrier_all():
-    return T.call_extern("handle", "AscendC::PipeBarrier<PIPE_ALL>")
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_barrier_all"))
 
 
 def gemm_v0(A, B, C, transpose_A=False, transpose_B=False, init=False):
@@ -203,23 +200,25 @@ _pipe = Literal["fix", "mte1", "mte2", "mte3", "m", "v"]
 
 
 def set_flag(src: _pipe, dst: _pipe, eventId: int):
-    return T.call_extern("handle",
-                         f"AscendC::SetFlag<AscendC::HardEvent::{src.upper()}_{dst.upper()}>",
-                         eventId)
+    return tir.call_intrin(
+        "handle", tir.op.Op.get("tl.ascend_set_flag"), src.upper(), dst.upper(), eventId
+    )
 
 
 def wait_flag(src: _pipe, dst: _pipe, eventId: int):
-    return T.call_extern("handle",
-                         f"AscendC::WaitFlag<AscendC::HardEvent::{src.upper()}_{dst.upper()}>",
-                         eventId)
+    return tir.call_intrin(
+        "handle", tir.op.Op.get("tl.ascend_wait_flag"), src.upper(), dst.upper(), eventId
+    )
 
 
 def pipe_barrier(pipe: _pipe):
-    return T.call_extern("handle", f"AscendC::PipeBarrier<PIPE_{pipe.upper()}>")
+    return tir.call_intrin(
+        "handle", tir.op.Op.get("tl.ascend_pipe_barrier"), pipe.upper()
+    )
 
 
 def sync_all():
-    return T.call_extern("handle", f"AscendC::SyncAll<false>")
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_sync_all"))
 
 
 def printf(format_str: str, *args):

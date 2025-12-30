@@ -122,6 +122,12 @@ private:
 
   void BroadcastOpCodegen(const CallNode *op);
 
+  void SetCrossFlagCodegen(const CallNode *op);
+
+  void FlagOpCodegen(const CallNode *op, std::string op_name);
+
+  void PipeBarrierCodegen (const CallNode *op, std::string pipe = "");
+
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.
   bool IsScopePartOfType() const final { return false; }
