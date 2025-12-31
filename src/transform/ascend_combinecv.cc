@@ -77,6 +77,11 @@ public:
   void VisitStmt_(const EvaluateNode *op) override {
     if (auto call_node = op->value.as<CallNode>()) {
       order_++;
+
+      if (!call_node->op.same_as(builtin::call_extern())) {
+        return;
+      }
+
       std::string func_name = call_node->args[0].as<StringImmNode>()->value;
 
       if (auto cfg_info = GetGMCopyCfgInfo(func_name)) {
