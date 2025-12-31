@@ -407,58 +407,6 @@ NpuirDeinterleave::NpuirDeinterleave(Array<PrimExpr> args, BufferMap vmap) {
   }
 }
 
-NpuirVCos::NpuirVCos(Array<PrimExpr> args, BufferMap vmap) {
-  NPUIR_GEN_BUF(args[0])
-  this->dst = bf;
-  this->dst_range = rg;
-  
-  size_t n_srcs = args.size() - 1;
-  for (size_t i = 0; i < n_srcs; i++) {
-    NPUIR_GEN_BUF(args[i + 1])
-    this->srcs.push_back(bf);
-    this->srcs_range.push_back(rg);
-  }
-}
-
-NpuirVSin::NpuirVSin(Array<PrimExpr> args, BufferMap vmap) {
-  NPUIR_GEN_BUF(args[0])
-  this->dst = bf;
-  this->dst_range = rg;
-  
-  size_t n_srcs = args.size() - 1;
-  for (size_t i = 0; i < n_srcs; i++) {
-    NPUIR_GEN_BUF(args[i + 1])
-    this->srcs.push_back(bf);
-    this->srcs_range.push_back(rg);
-  }
-}
-
-NpuirVErf::NpuirVErf(Array<PrimExpr> args, BufferMap vmap) {
-  NPUIR_GEN_BUF(args[0])
-  this->dst = bf;
-  this->dst_range = rg;
-  
-  size_t n_srcs = args.size() - 1;
-  for (size_t i = 0; i < n_srcs; i++) {
-    NPUIR_GEN_BUF(args[i + 1])
-    this->srcs.push_back(bf);
-    this->srcs_range.push_back(rg);
-  }
-}
-
-NpuirVTanh::NpuirVTanh(Array<PrimExpr> args, BufferMap vmap) {
-  NPUIR_GEN_BUF(args[0])
-  this->dst = bf;
-  this->dst_range = rg;
-  
-  size_t n_srcs = args.size() - 1;
-  for (size_t i = 0; i < n_srcs; i++) {
-    NPUIR_GEN_BUF(args[i + 1])
-    this->srcs.push_back(bf);
-    this->srcs_range.push_back(rg);
-  }
-}
-
 TIR_REGISTER_TL_OP(AscendCopy, ascend_copy)
     .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
@@ -564,25 +512,5 @@ TIR_REGISTER_TL_OP(NpuirDeinterleave, npuir_deinterleave)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
 
-TIR_REGISTER_TL_OP(NpuirVCos, npuir_vcos)
-    .set_num_inputs(-1)
-    .set_attr<TCallEffectKind>("TCallEffectKind",
-                               Integer(CallEffectKind::kOpaque));
-
-TIR_REGISTER_TL_OP(NpuirVSin, npuir_vsin)
-    .set_num_inputs(-1)
-    .set_attr<TCallEffectKind>("TCallEffectKind",
-                               Integer(CallEffectKind::kOpaque));
-                               
-TIR_REGISTER_TL_OP(NpuirVErf, npuir_verf)
-    .set_num_inputs(-1)
-    .set_attr<TCallEffectKind>("TCallEffectKind",
-                               Integer(CallEffectKind::kOpaque));
-
-TIR_REGISTER_TL_OP(NpuirVCTanh, npuir_vtanh)
-    .set_num_inputs(-1)
-    .set_attr<TCallEffectKind>("TCallEffectKind",
-                               Integer(CallEffectKind::kOpaque));    
-                           
 } // namespace tl
 } // namespace tvm
