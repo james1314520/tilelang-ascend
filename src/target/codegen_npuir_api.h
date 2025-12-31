@@ -233,10 +233,6 @@ private:
   void VdeinterleaveCodegen(const CallNode *op);
   void FixpipeCodegen(const CallNode *op);
   void DotCodegen(const CallNode *op);
-  void VcosCodegen(const CallNode *op);
-  void VsinCodegen(const CallNode *op);
-  void VerfCodegen(const CallNode *op);
-  void VtanhCodegen(const CallNode *op);
   void DebugPrintCodegen(const CallNode *op);
   template <typename T> void CreateHIVMBinaryVectorOp(const CallNode *op);
   template <typename T, typename U> void UnaryVecOpCodegen(const CallNode *op);
