@@ -11,6 +11,8 @@
 #include <tvm/tir/index_map.h>
 #include <tvm/tir/op.h>
 
+#include <tvm/tir/expr.h>
+
 #include <cmath>
 #include <string>
 #include <utility>
@@ -1678,7 +1680,7 @@ void CodeGenTileLangAscend::BroadcastOpCodegen(const CallNode *op) {
   // 2. Src Buffer
   this->stream << PrintBufferOffset(op->args[2].as<CallNode>()) << ",";
   // 3. Dst Shape Array
-  PrintConstArray(op, 4, dim); 
+  PrintConstArray(op, 4, dim);
   this->stream << ", ";
   // 4. Src Shape Array
   PrintConstArray(op, 4 + dim, dim);
