@@ -233,6 +233,7 @@ private:
   void VinterleaveCodegen(const CallNode *op);
   void VarangeCodegen(const CallNode *op);
   void VconcatCodegen(const CallNode *op);
+  void VpadCodegen(const CallNode *op);
   void VflipCodegen(const CallNode *op);
   void VdeinterleaveCodegen(const CallNode *op);
   void FixpipeCodegen(const CallNode *op);

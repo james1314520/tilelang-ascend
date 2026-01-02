@@ -413,6 +413,27 @@ NpuirConcat::NpuirConcat(Array<PrimExpr> args, BufferMap vmap) {
   }
 }
 
+NpuirPad::NpuirPad(Array<PrimExpr> args, BufferMap vmap) {
+  NPUIR_SRC_DST_BUF
+
+  this->pad_value = args[2];
+
+  this->pad_dim = args[3].as<IntImm>().value()->value;
+
+  NPUIR_LIST_PARAM(s_low, 4)
+  NPUIR_LIST_PARAM(s_high, 5)
+
+  int num_dynamic_low = args[6].as<IntImm>().value()->value;
+  int num_dynamic = args.size() - 7;
+  for (int i = 0; i < num_dynamic; i++) {
+    if (i < num_dynamic_low) {
+      this->low.push_back(args[7 + i]);
+    } else {
+      this->high.push_back(args[7 + i]);
+    }
+  }
+}
+
 NpuirFlip::NpuirFlip(Array<PrimExpr> args, BufferMap vmap){NPUIR_SRC_DST_BUF}
 
 NpuirBitcast::NpuirBitcast(Array<PrimExpr> args, BufferMap vmap) {
@@ -573,6 +594,11 @@ TIR_REGISTER_TL_OP(NpuirArange, npuir_arange)
                                Integer(CallEffectKind::kOpaque));
 
 TIR_REGISTER_TL_OP(NpuirConcat, npuir_concat)
+    .set_num_inputs(-1)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirPad, npuir_pad)
     .set_num_inputs(-1)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
