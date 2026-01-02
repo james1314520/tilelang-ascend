@@ -408,6 +408,27 @@ public:
   Array<Range> dst_range;
 };
 
+/// HIVM vector pad operation
+/// Pads the input operand.
+class NpuirPad : public Operator {
+public:
+  NpuirPad(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src;
+  Buffer dst;
+  PrimExpr pad_value;
+  int pad_dim;
+  std::vector<PrimExpr> low;
+  std::vector<PrimExpr> high;
+  std::vector<int64_t> s_low;
+  std::vector<int64_t> s_high;
+
+  Array<Range> src_range;
+  Array<Range> dst_range;
+};
+
 /// HIVM vector flip operation
 /// Flips a tensor along the last dimension.
 class NpuirFlip : public Operator {

@@ -628,6 +628,74 @@ def npuir_concat(*args, size=[]):
  
     return _tir_call_intrin(dim, dst, *srcs_arr)
 
+def npuir_pad(src, dst, pad_value, low: Union[list, tuple], high: Union[list, tuple], size=[]):
+    """Pads the input operand.
+ 
+    Args:
+        src (Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion]): Source vector
+        dst (Union[tir.Buffer, tir.BufferLoad]): Destination vector
+        pad_value: The value to pad
+        low: The padding lengths along the start of each dimension(Dynamic)
+        high: The padding lengths along the end of each dimension(Dynamic)
+        static_low: The padding lengths along the start of each dimension(Static)
+        static_high: The padding lengths along the end of each dimension(Static)
+ 
+    Returns:
+        tir.Call: A handle to the npuir_pad operation
+    
+    Notes:
+        1. Both low/static_low and high/staitc_high can be negative, but the result tensor dimensions are all non-negative
+        2. Not support decomposing multi-dim padding for now.
+    """
+    src_extent = _get_extent(src) if size == [] else size.copy()
+    dst_size = []
+    if size != []:
+        for i in range(len(size)):
+            dst_size[i] = size[i] + low[i] + high[i]
+            assert dst_sze[i] >= 0, "The result tensor dimensions should be non-negative."
+    dst_extent = _get_extent(dst) if size == [] else dst_size.copy()
+    assert len(src_extent) == len(
+        dst_extent), "The input vector and output vector must have same rank."
+
+    assert len(src_extent) == len(low), "Low pad array should have the same length with input vector."
+    assert len(src_extent) == len(high), "High pad array should have the same length with input vector."
+
+    src = _to_region(src, "r", src_extent)
+    dst = _to_region(dst, "w", dst_extent)
+
+    dynamic = []
+    num_dynamic_low = 0
+    static_low = []
+    static_high = []
+    pad_dim = -1
+    for idx, (l, h) in enumerate(zip(low, high)):
+        if isinstance(l, tir.Var) or isinstance(h, tir.Var) or l != 0 or h != 0:
+            if pad_dim < 0:
+                pad_dim = idx
+            else: 
+                raise ValueError("Not support decomposing multi-dim padding for now.")
+
+        if isinstance(l, tir.Var):
+            dynamic.append(l)
+            static_low.append(0)
+            num_dynamic_low += 1
+        else:
+            static_low.append(l)
+        
+        if isinstance(h, tir.Var):
+            dynamic.append(h)
+            static_high.append(0)
+        else:
+            static_high.append(h)
+
+    s_low_str = ','.join(str(s_l) for s_l in static_low)
+    s_high_str = ','.join(str(s_h) for s_h in static_high)
+
+    def _tir_call_intrin(src, dst, pad_value, pad_dim, s_low_str, s_high_str, num_dynamic_low, *dynamic: tir.PrimExpr):
+        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_pad"), src, dst, pad_value, pad_dim, s_low_str, s_high_str, num_dynamic_low, *dynamic)
+ 
+    return _tir_call_intrin(src, dst, pad_value, pad_dim, s_low_str, s_high_str, num_dynamic_low, *dynamic)
+
 def npuir_flip(src, dst, size=[]):
     """Flips a tensor along the last dimension.
  

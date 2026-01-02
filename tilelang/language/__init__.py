@@ -107,6 +107,7 @@ from .customize_npuir import (
     npuir_transpose,
     npuir_arange,
     npuir_concat,
+    npuir_pad,
     npuir_flip,
     npuir_bitcast,
     rs,

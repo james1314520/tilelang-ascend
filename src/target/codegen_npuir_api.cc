@@ -1066,6 +1066,33 @@ void CodeGenTileLangNPUIRAPI::VconcatCodegen(const CallNode *op) {
                                         dim, srcs_vr, dst);
 }
 
+void CodeGenTileLangNPUIRAPI::VpadCodegen(const CallNode *op) {
+  tvm::tl::NpuirPad npuirop(op->args, this->vmap);
+  Value src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
+  Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+  Value pad_value = MakeValue(npuirop.pad_value);
+  llvm::SmallVector<Value> low;
+  llvm::SmallVector<Value> high;
+  for (auto l : npuirop.low) {
+    mlir::Value mlir_low = CreateIndexCastOp(MakeValue(l));
+    low.push_back(mlir_low);
+  }
+  for (auto h : npuirop.high) {
+    mlir::Value mlir_high = CreateIndexCastOp(MakeValue(h));
+    high.push_back(mlir_high);
+  }
+  if (!low.empty()) {
+    npuirop.s_low[npuirop.pad_dim] = ShapedType::kDynamic;
+  }
+  if (!high.empty()) {
+    npuirop.s_high[npuirop.pad_dim] = ShapedType::kDynamic;
+  }
+  builder.create<mlir::hivm::VPadOp>(
+      builder.getUnknownLoc(), TypeRange{}, src, dst, pad_value, low, high,
+      builder.getDenseI64ArrayAttr(npuirop.s_low),
+      builder.getDenseI64ArrayAttr(npuirop.s_high));
+}
+
 void CodeGenTileLangNPUIRAPI::VflipCodegen(const CallNode *op) {
   tvm::tl::NpuirFlip npuirop(op->args, this->vmap);
   Value src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
@@ -1498,6 +1525,8 @@ mlir::Value CodeGenTileLangNPUIRAPI::VisitExpr_(const CallNode *op) {
     VarangeCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_concat"))) {
     VconcatCodegen(op);
+  } else if (op->op.same_as(Op::Get("tl.npuir_pad"))) {
+    VpadCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_flip"))) {
     VflipCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_debug_print_var")) ||
