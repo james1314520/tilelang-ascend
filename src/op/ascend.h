@@ -104,6 +104,18 @@ public:
   Array<Range> src_range, dst_range;
 };
 
+/// HIVM data copy operation from L1 to Global Memory with NZ2ND conversion.
+class NpuirNz2nd : public Operator {
+public:
+  NpuirNz2nd(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src, dst;
+
+  Array<Range> src_range, dst_range;
+};
+
 /// HIVM data copy operation from L0C to L1 or Global Memory via fixpipe
 /// pipeline.
 class NpuirFixpipe : public Operator {
@@ -362,6 +374,68 @@ public:
 
   Array<Range> src_range;
   std::vector<Array<Range>> dsts_range;
+};
+
+/// HIVM vector arange operation
+/// Fill a vector with range 0,1,2... based on strides and offset.
+class NpuirArange : public Operator {
+public:
+  NpuirArange(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer dst;
+  std::vector<int64_t> strides;
+  int64_t offset;
+
+  Array<Range> dst_range;
+};
+
+/// HIVM vector concat operation
+/// Constructs a tensor out of a variadic list of input tensors, concatenated
+/// along a static dimension number.
+class NpuirConcat : public Operator {
+public:
+  NpuirConcat(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  std::vector<Buffer> srcs;
+  Buffer dst;
+  int64_t dim;
+
+  std::vector<Array<Range>> srcs_range;
+  Array<Range> dst_range;
+};
+
+/// HIVM vector flip operation
+/// Flips a tensor along the last dimension.
+class NpuirFlip : public Operator {
+public:
+  NpuirFlip(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src;
+  Buffer dst;
+
+  Array<Range> src_range;
+  Array<Range> dst_range;
+};
+
+/// HIVM bitcast operation
+/// Converts a tensor/memref from one element type to another while preserving
+/// the underlying bit representation.
+class NpuirBitcast : public Operator {
+public:
+  NpuirBitcast(Array<PrimExpr> args, BufferMap vmap);
+
+  static const Op &Get();
+
+  Buffer src;
+  std::string dtype;
+
+  Array<Range> src_range;
 };
 
 } // namespace tl
