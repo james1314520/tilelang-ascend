@@ -1030,6 +1030,50 @@ void CodeGenTileLangNPUIRAPI::VdeinterleaveCodegen(const CallNode *op) {
                                               channel_nums, index_mode);
 }
 
+void CodeGenTileLangNPUIRAPI::VarangeCodegen(const CallNode *op) {
+  tvm::tl::NpuirArange npuirop(op->args, this->vmap);
+  Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+
+  auto offsetValue = builder.create<mlir::arith::ConstantOp>(
+      builder.getUnknownLoc(), builder.getI64Type(),
+      builder.getI64IntegerAttr(npuirop.offset));
+  mlir::Value offset = CreateIndexCastOp(offsetValue);
+  llvm::SmallVector<Value> strides;
+  for (auto st : npuirop.strides) {
+    auto stValue = builder.create<mlir::arith::ConstantOp>(
+        builder.getUnknownLoc(), builder.getI64Type(),
+        builder.getI64IntegerAttr(st));
+    mlir::Value stride = CreateIndexCastOp(stValue);
+    strides.push_back(stride);
+  }
+
+  builder.create<mlir::hivm::VArangeOp>(builder.getUnknownLoc(), TypeRange{},
+                                        dst, offset, strides);
+}
+
+void CodeGenTileLangNPUIRAPI::VconcatCodegen(const CallNode *op) {
+  tvm::tl::NpuirConcat npuirop(op->args, this->vmap);
+  auto dim = builder.getIntegerAttr(builder.getI64Type(), npuirop.dim);
+  llvm::SmallVector<Value> srcs;
+  size_t n_srcs = npuirop.srcs.size();
+  for (size_t i = 0; i < n_srcs; i++) {
+    Value src = GenSubviewFromRegion(npuirop.srcs[i], npuirop.srcs_range[i]);
+    srcs.push_back(src);
+  }
+  mlir::ValueRange srcs_vr(srcs);
+  Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+  builder.create<mlir::hivm::VConcatOp>(builder.getUnknownLoc(), TypeRange{},
+                                        dim, srcs_vr, dst);
+}
+
+void CodeGenTileLangNPUIRAPI::VflipCodegen(const CallNode *op) {
+  tvm::tl::NpuirFlip npuirop(op->args, this->vmap);
+  Value src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
+  Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+  builder.create<mlir::hivm::VFlipOp>(builder.getUnknownLoc(), TypeRange{}, src,
+                                      dst);
+}
+
 void CodeGenTileLangNPUIRAPI::Nd2NzCodegen(const CallNode *op) {
   // Generate hivm.hir.nd2nz for tl.npuir_load_nd2nz.
   tvm::tl::NpuirNd2nz npuirop(op->args, this->vmap);
@@ -1044,6 +1088,18 @@ void CodeGenTileLangNPUIRAPI::Nd2NzCodegen(const CallNode *op) {
       npuirop.dst_continuous ? builder.getUnitAttr() : mlir::UnitAttr();
   builder.create<mlir::hivm::ND2NZOp>(unknown_loc, res, src, dst,
                                        dst_continuous);
+}
+
+void CodeGenTileLangNPUIRAPI::Nz2NdCodegen(const CallNode *op) {
+  // Generate hivm.hir.nz2nd for tl.npuir_store_nz2nd.
+  tvm::tl::NpuirNz2nd npuirop(op->args, this->vmap);
+  // gen memref.subview
+  mlir::Value src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
+  mlir::Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+
+  // gen hivm.hir.nz2nd
+  builder.create<mlir::hivm::NZ2NDOp>(builder.getUnknownLoc(),
+                                      mlir::TypeRange{}, src, dst);
 }
 
 void CodeGenTileLangNPUIRAPI::FixpipeCodegen(const CallNode *op) {
@@ -1128,6 +1184,33 @@ void CodeGenTileLangNPUIRAPI::DotCodegen(const CallNode *op) {
   builder.create<mlir::hivm::MmadL1Op>(
       unknown_loc, result_tensors, a, b, init_condition, real_m, real_k, real_n,
       c, per_channel_bias, a_transpose, b_transpose, enable_HF32);
+}
+
+void CodeGenTileLangNPUIRAPI::BitcastCodegen(const CallNode *op) {
+  tvm::tl::NpuirBitcast npuirop(op->args, this->vmap);
+
+  auto dl_dtype = tvm::runtime::String2DLDataType(npuirop.dtype);
+  auto tir_dtype = DataType(dl_dtype);
+
+  mlir::Value src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
+  auto src_type = src.getType();
+  if (auto memref_type = mlir::dyn_cast<MemRefType>(src_type)) {
+    auto src_shape = memref_type.getShape();
+    auto src_layout = memref_type.getLayout();
+    auto src_memspace = memref_type.getMemorySpace();
+    auto res_type = mlir::MemRefType::get(src_shape, DTypetoMLIRType(tir_dtype),
+                                          src_layout, src_memspace);
+    builder.create<mlir::hivm::BitcastOp>(builder.getUnknownLoc(), res_type,
+                                          src);
+  } else if (auto tensor_type = mlir::dyn_cast<RankedTensorType>(src_type)) {
+    auto src_shape = tensor_type.getShape();
+    auto res_type =
+        mlir::RankedTensorType::get(src_shape, DTypetoMLIRType(tir_dtype));
+    builder.create<mlir::hivm::BitcastOp>(builder.getUnknownLoc(), res_type,
+                                          src);
+  } else {
+    llvm_unreachable("Unspported source type (expected tensor or memref)");
+  }
 }
 
 mlir::Value CodeGenTileLangNPUIRAPI::GenMemrefLoadFromRegion(const BufferLoadNode *op) {
@@ -1367,11 +1450,15 @@ mlir::Value CodeGenTileLangNPUIRAPI::VisitExpr_(const CallNode *op) {
     CreateHIVMBinaryVectorOp<mlir::hivm::VCmpOp>(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_load_nd2nz"))) {
     Nd2NzCodegen(op);
+  } else if (op->op.same_as(Op::Get("tl.npuir_store_nz2nd"))) {
+    Nz2NdCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_store_fixpipe"))) {
     FixpipeCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_dot"))) {
     DotCodegen(op);
-  } else if (op->op.same_as(Op::Get("tl.npuir_div"))) {
+  } else if (op->op.same_as(Op::Get("tl.npuir_bitcast"))) {
+    BitcastCodegen(op);
+  }  else if (op->op.same_as(Op::Get("tl.npuir_div"))) {
     CreateHIVMBinaryVectorOp<mlir::hivm::VDivOp>(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_mul"))) {
     CreateHIVMBinaryVectorOp<mlir::hivm::VMulOp>(op);
@@ -1407,6 +1494,12 @@ mlir::Value CodeGenTileLangNPUIRAPI::VisitExpr_(const CallNode *op) {
     VinterleaveCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_deinterleave"))) {
     VdeinterleaveCodegen(op);
+  } else if (op->op.same_as(Op::Get("tl.npuir_arange"))) {
+    VarangeCodegen(op);
+  } else if (op->op.same_as(Op::Get("tl.npuir_concat"))) {
+    VconcatCodegen(op);
+  } else if (op->op.same_as(Op::Get("tl.npuir_flip"))) {
+    VflipCodegen(op);
   } else if (op->op.same_as(Op::Get("tl.npuir_debug_print_var")) ||
              op->op.same_as(Op::Get("tl.npuir_debug_print_buffer_value"))) {
     DebugPrintCodegen(op);

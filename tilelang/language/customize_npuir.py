@@ -4,6 +4,7 @@ import tilelang.language as T
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Optional
 from tvm import ir, tir
+from tvm import runtime
 from tvm.script.ir_builder.tir.frame import TIRFrame
 from tvm._ffi import register_object
 from tilelang import _ffi_api
@@ -304,6 +305,21 @@ def npuir_load_nd2nz(src, dst, size = []):
     dst_continuous = True
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_load_nd2nz"), src, dst, dst_continuous)
 
+def npuir_store_nz2nd(src, dst, size=[]):
+    """npuir nz2nd-store data from L1 to gm at tile-level.
+
+    Args:
+        src (Union[tir.Buffer, tir.Var]): Input argument to legalize
+        dst (Union[tir.Buffer, tir.Var]): Output argument to legalize
+        size ([]): buffer extent
+    Returns:
+        tir.Call: A handle to the npuir_load_nd2nz operation
+    """
+
+    src = _to_region(src, "r", _get_extent(src) if size is [] else size)
+    dst = _to_region(dst, "w", _get_extent(dst) if size is [] else size)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_store_nz2nd"), src, dst)
+
 
 def npuir_store_fixpipe(src, dst, size = [], enable_nz2nd = False, channel_split = False, pre_relu_mode = ""):
     """npuir nd2nz-load data from OUT to L1 at tile-level.
@@ -557,6 +573,101 @@ def npuir_transpose(src, dst, permutation = Union[list, tuple], size=[]):
  
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_transpose"), src, dst, permutation_str)
 
+def npuir_arange(dst, strides: Union[list, tuple], offset=0, size=[]):
+    """Fill a vector with range 0,1,2... based on strides and offset.
+    e.g. offset = 1, strides = [1, 2], tensor/memref shape = [2x4xi32],
+    the result is [[1, 3, 5, 7,
+                    2, 4, 6, 8]].
+ 
+    Args:
+        dst (Union[tir.Buffer, tir.BufferLoad]): Destination vector
+        strides (Union[list, tuple]): Stride list
+ 
+    Returns:
+        tir.Call: A handle to the npuir_arange operation
+    """
+    dst_extent = _get_extent(dst) if size == [] else size.copy()
+    dst = _to_region(dst, "w", dst_extent)
+    strides_str = ','.join(str(stride) for stride in strides)
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_arange"), dst, strides_str, offset)
+
+def npuir_concat(*args, size=[]):
+    """The concat operation constructs a tensor out of a variadic list of input
+    tensors, concatenated along a static dimension number.
+ 
+    Args:
+        srcs (Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion]): Source vectors
+        dst (Union[tir.Buffer, tir.BufferLoad]): Destination vector
+        dim: Specifies the dimension along which to concatenate
+    
+    Raises:
+        AssertionError: If input vector and output vector have different ranks.
+ 
+    Returns:
+        tir.Call: A handle to the npuir_concat operation
+    """
+    *srcs, dst, dim = args
+    srcs_arr = []
+    dst_size = size
+
+    for i, src in enumerate(srcs):
+        src_extent = _get_extent(src) if size == [] else size.copy()
+        if size == []:
+            assert len(src_extent) == len(_get_extent(dst)), "The input vector and output vector must have same rank."
+        src = _to_region(src, "r", src_extent)
+        srcs_arr.append(src)
+        if i == dim and size != []:
+            dst_size[i] *= len(srcs)
+
+    dst_extent = _get_extent(dst) if size == [] else dst_size.copy()
+    dst = _to_region(dst, "w", dst_extent)
+
+    def _tir_call_intrin(dim, dst, *srcs: tir.PrimExpr):
+        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_concat"), dim, dst, *srcs)
+ 
+    return _tir_call_intrin(dim, dst, *srcs_arr)
+
+def npuir_flip(src, dst, size=[]):
+    """Flips a tensor along the last dimension.
+ 
+    Args:
+        src (Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion]): Source vector
+        dst (Union[tir.Buffer, tir.BufferLoad]): Destination vector
+ 
+    Returns:
+        tir.Call: A handle to the npuir_flip operation
+    """
+    src_extent = _get_extent(src) if size == [] else size.copy()
+    dst_extent = _get_extent(dst) if size == [] else size.copy()
+ 
+    src = _to_region(src, "r", src_extent)
+    dst = _to_region(dst, "w", dst_extent)
+ 
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_flip"), src, dst)
+
+def npuir_bitcast(src, dtype, size = []):
+    """Reinterprets the bits of a shaped value without changing data.
+ 
+    Args:
+        src (Union[tir.Buffer, tir.BufferLoad, tir.BufferRegion]): Source vector
+        dtype (str): Data type in the result vector
+ 
+    Raises:
+        AssertionError: If src vector data type and converted data type have different bit widths.
+
+    Returns:
+        tir.Call: A handle to the npuir_bitcast operation
+    """
+    src_dtype = runtime.DataType(src.dtype)
+    src_extent = _get_extent(src) if size == [] else size.copy()
+    src = _to_region(src, "rw", src_extent)
+
+    tir_dtype = runtime.DataType(dtype)
+    assert (tir_dtype.bits == src_dtype.bits), "The converted data type should have the same bit width with the src data type."
+
+    return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_bitcast"), src, dtype)
+
 def npuir_print(obj: Union[tir.PrimExpr, tir.Buffer], msg: str = "", hex: bool = False) -> tir.PrimExpr:
     """
     A generic print function that handles both TIR buffers and primitive expressions.
@@ -578,8 +689,7 @@ def npuir_print(obj: Union[tir.PrimExpr, tir.Buffer], msg: str = "", hex: bool =
         ValueError: If the input buffer scope is unsupported.
         ValueError: If the input object type is unsupported.
     """
-    if isinstance(obj, tir.PrimExpr):
-        assert isinstance(obj, tir.Var), "Only support printing variables."
+    if isinstance(obj, tir.Var):
         assert ("int" in obj.dtype or "float" in obj.dtype), "Only support printing integer/float variables."
         if not msg:
             msg = f"expr<{obj}>"
@@ -598,11 +708,17 @@ def npuir_print(obj: Union[tir.PrimExpr, tir.Buffer], msg: str = "", hex: bool =
             # Unsupported buffer scope.
             raise ValueError(
                 f"Unexpected buffer scope: {scope}. Supported scopes are share, share.dyn and global.")
+    elif isinstance(obj, BufferLoad) or isinstance(obj, BufferRegion):
+        if not msg:
+            msg = f"subview<{obj.buffer.name}, {obj.buffer.dtype}>"
+        obj_extent = _get_extent(obj)
+        obj = _to_region(obj, "r", obj_extent)
+        return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_debug_print_buffer_value"), obj, msg, hex)
 
     else:
         # Unsupported object type.
         raise ValueError(
-            f"Unexpected type: {type(obj)}. Supported types are tir.Buffer and tir.PrimExpr.")
+            f"Unexpected type: {type(obj)}. Supported types are tir.Buffer, tir.BufferLoad, tir.BufferRegion and tir.PrimExpr.")
 
 _local = threading.local()
 

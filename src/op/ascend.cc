@@ -141,6 +141,21 @@ NpuirNd2nz::NpuirNd2nz(Array<PrimExpr> args, BufferMap vmap) {
   dst_continuous = args[2].as<Bool>().value();
 }
 
+NpuirNz2nd::NpuirNz2nd(Array<PrimExpr> args, BufferMap vmap) {
+  Array<Range> rgs[2];
+  Buffer bf[2];
+  for (int i = 0; i < 2; i++) {
+    auto expr = args[i];
+    auto call = expr.as<CallNode>();
+    ICHECK(call);
+    auto region = RegionOp(call->args, vmap);
+    rgs[i] = region.GetRanges();
+    bf[i] = region.GetBuffer();
+  }
+  std::tie(this->src, this->dst) = std::tie(bf[0], bf[1]);
+  std::tie(this->src_range, this->dst_range) = std::tie(rgs[0], rgs[1]);
+}
+
 NpuirFixpipe::NpuirFixpipe(Array<PrimExpr> args, BufferMap vmap) {
   Array<Range> rgs[2];
   Buffer bf[2];
@@ -352,10 +367,10 @@ NpuirDevicePrintBuf::NpuirDevicePrintBuf(Array<PrimExpr> args, BufferMap vmap) {
 
 #define NPUIR_LIST_PARAM(list_param, arg_pos)                                  \
   std::string str_##list_param = args[arg_pos].as<StringImmNode>()->value;     \
-  std::stringstream ss(str_##list_param);                                      \
-  std::string num;                                                             \
-  while (std::getline(ss, num, ',')) {                                         \
-    list_param.push_back(std::stoi(num));                                      \
+  std::stringstream ss_##list_param(str_##list_param);                                      \
+  std::string num_##list_param;                                                             \
+  while (std::getline(ss_##list_param, num_##list_param, ',')) {                                         \
+    list_param.push_back(std::stoi(num_##list_param));                                      \
   }
 
 NpuirGather::NpuirGather(Array<PrimExpr> args, BufferMap vmap) {
@@ -371,6 +386,41 @@ NpuirGather::NpuirGather(Array<PrimExpr> args, BufferMap vmap) {
   buffer = region.GetBuffer();
   this->indices = buffer;
   this->indices_range = range;
+}
+
+NpuirArange::NpuirArange(Array<PrimExpr> args, BufferMap vmap) {
+  NPUIR_GEN_BUF(args[0])
+  this->dst = bf;
+  this->dst_range = rg;
+
+  NPUIR_LIST_PARAM(strides, 1)
+
+  this->offset = args[2].as<IntImm>().value()->value;
+}
+
+NpuirConcat::NpuirConcat(Array<PrimExpr> args, BufferMap vmap) {
+  this->dim = args[0].as<IntImm>().value()->value;
+
+  NPUIR_GEN_BUF(args[1])
+  this->dst = bf;
+  this->dst_range = rg;
+
+  size_t n_srcs = args.size() - 2;
+  for (size_t i = 0; i < n_srcs; i++) {
+    NPUIR_GEN_BUF(args[2 + i])
+    this->srcs.push_back(bf);
+    this->srcs_range.push_back(rg);
+  }
+}
+
+NpuirFlip::NpuirFlip(Array<PrimExpr> args, BufferMap vmap){NPUIR_SRC_DST_BUF}
+
+NpuirBitcast::NpuirBitcast(Array<PrimExpr> args, BufferMap vmap) {
+  NPUIR_GEN_BUF(args[0])
+  this->src = bf;
+  this->src_range = rg;
+  this->dtype = args[1].as<StringImmNode>()->value;
+  ;
 }
 
 NpuirTranspose::NpuirTranspose(Array<PrimExpr> args, BufferMap vmap){
@@ -419,6 +469,11 @@ TIR_REGISTER_TL_OP(NpuirDot, npuir_dot)
 
 TIR_REGISTER_TL_OP(NpuirNd2nz, npuir_load_nd2nz)
     .set_num_inputs(3)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirNz2nd, npuir_store_nz2nd)
+    .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
 
@@ -509,6 +564,26 @@ TIR_REGISTER_TL_OP(NpuirInterleave, npuir_interleave)
 
 TIR_REGISTER_TL_OP(NpuirDeinterleave, npuir_deinterleave)
     .set_num_inputs(-1)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirArange, npuir_arange)
+    .set_num_inputs(-1)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirConcat, npuir_concat)
+    .set_num_inputs(-1)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirFlip, npuir_flip)
+    .set_num_inputs(2)
+    .set_attr<TCallEffectKind>("TCallEffectKind",
+                               Integer(CallEffectKind::kOpaque));
+
+TIR_REGISTER_TL_OP(NpuirBitcast, npuir_bitcast)
+    .set_num_inputs(2)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
 
