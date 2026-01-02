@@ -18,6 +18,8 @@ Within the TileLang ecosystem, we have developed an NPU Intermediate Representat
 
 ## Latest News
 
+- 1/2/2026 🚀: Support for store_nz2nd, arange, concat, flip, bitcast, and vpad ops. Check out [Pull Request#201](https://github.com/tile-ai/tilelang-ascend/pull/201), [Pull Request#202](https://github.com/tile-ai/tilelang-ascend/pull/202), and [Pull Request#203](https://github.com/tile-ai/tilelang-ascend/pull/203) for details!
+
 - 12/28/2025 🚀: Support for CV automatic pipelining (T.Pipelined), enabling parallel collaboration between Cube and Vector cores to boost performance. Check out [Pull Request#181](https://github.com/tile-ai/tilelang-ascend/pull/181) for details!
 
 - 12/29/2025 🚀: Support for double buffer, enabling concurrent computation and data transfer. Automatically takes effect in developer mode.
