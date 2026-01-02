@@ -232,6 +232,7 @@ private:
   void CallExternCodegen(const CallNode *op);
   void AscendCopyCodegen(const CallNode *op);
   void Nd2NzCodegen(const CallNode *op);
+  void Nz2NdCodegen(const CallNode *op);
   void VexpCodegen(const CallNode *op);
   void VbrcCodegen(const CallNode *op);
   void VcastCodegen(const CallNode *op);
@@ -240,8 +241,13 @@ private:
   void VtransposeCodegen(const CallNode *op);
   void VinterleaveCodegen(const CallNode *op);
   void VdeinterleaveCodegen(const CallNode *op);
+  void VarangeCodegen(const CallNode *op);
+  void VconcatCodegen(const CallNode *op);
+  void VpadCodegen(const CallNode *op);
+  void VflipCodegen(const CallNode *op);
   void FixpipeCodegen(const CallNode *op);
   void DotCodegen(const CallNode *op);
+  void BitcastCodegen(const CallNode *op);
   void DebugPrintCodegen(const CallNode *op);
   template <typename T> void CreateHIVMBinaryVectorOp(const CallNode *op);
   template <typename T, typename U> void UnaryVecOpCodegen(const CallNode *op);
