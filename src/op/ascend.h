@@ -148,6 +148,10 @@ TVM_DLL const Op &ascend_barrier_all();
 TVM_DLL const Op &ascend_pipe_barrier();
 
 TVM_DLL const Op &ascend_sync_all();
+
+TVM_DLL const Op &ascend_gemm_v0();
+
+TVM_DLL const Op &ascend_gemm_v1();
 } // namespace tl
 } // namespace tvm
 

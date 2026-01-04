@@ -491,48 +491,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       std::string expr = PrintExpr(op->args[1]);
       os << op_name << "("
                    << expr << ")";
-    } else if (op_name.find("gemm_v0") != std::string::npos) {
-      this->PrintIndent();
-      auto a_var = op->args[1].as<CallNode>()->args[1].as<VarNode>();
-      auto b_var = op->args[2].as<CallNode>()->args[1].as<VarNode>();
-      auto c_var = op->args[3].as<CallNode>()->args[1].as<VarNode>();
-
-      auto a_offset = PrintExpr(op->args[1].as<CallNode>()->args[2]);
-      auto b_offset = PrintExpr(op->args[2].as<CallNode>()->args[2]);
-      auto c_offset = PrintExpr(op->args[3].as<CallNode>()->args[2]);
-
-      auto a_name = var_idmap_[a_var];
-      auto b_name = var_idmap_[b_var];
-      auto c_name = var_idmap_[c_var];
-
-      auto src_type = op->args[1].as<CallNode>()->args[0].as<CallNode>()->dtype;
-      auto dst_type = op->args[3].as<CallNode>()->args[0].as<CallNode>()->dtype;
-
-      this->stream << op_name << "(" << a_name << "[" << a_offset << "], "
-                   << b_name << "[" << b_offset << "], " << c_name << "["
-                   << c_offset << "], ascend_l0a, ascend_l0b, "
-                   << PrintExpr(op->args[4]) << ");\n";
-    } else if (op_name.find("gemm_v1") != std::string::npos) {
-      this->PrintIndent();
-      auto a_var = op->args[1].as<CallNode>()->args[1].as<VarNode>();
-      auto b_var = op->args[2].as<CallNode>()->args[1].as<VarNode>();
-      auto c_var = op->args[3].as<CallNode>()->args[1].as<VarNode>();
-
-      auto a_offset = PrintExpr(op->args[1].as<CallNode>()->args[2]);
-      auto b_offset = PrintExpr(op->args[2].as<CallNode>()->args[2]);
-      auto c_offset = PrintExpr(op->args[3].as<CallNode>()->args[2]);
-
-      auto a_name = var_idmap_[a_var];
-      auto b_name = var_idmap_[b_var];
-      auto c_name = var_idmap_[c_var];
-
-      auto src_type = op->args[1].as<CallNode>()->args[0].as<CallNode>()->dtype;
-      auto dst_type = op->args[3].as<CallNode>()->args[0].as<CallNode>()->dtype;
-
-      this->stream << op_name << "(" << a_name << "[" << a_offset << "], "
-                   << b_name << "[" << b_offset << "], " << c_name << "["
-                   << c_offset << "], ascend_l0a, ascend_l0b, "
-                   << PrintExpr(op->args[4]) << ");\n";
     } else if (op_name == "AscendC::PRINTF" || op_name == "AscendC::printf") {
       this->PrintIndent();
       this->stream << op_name << "(";
@@ -733,6 +691,10 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     PipeBarrierCodegen(op);
   } else if (op->op.same_as(tl::ascend_sync_all())) {
     PrintOpCall(op, "AscendC::SyncAll<false>", {0, 0}, {0, 0});
+  } else if (op->op.same_as(tl::ascend_gemm_v0())) {
+    GemmOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_gemm_v1())) {
+    GemmOpCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1710,6 +1672,26 @@ void CodeGenTileLangAscend::PipeBarrierCodegen (const CallNode *op, std::string 
   std::string op_name = "AscendC::PipeBarrier<PIPE_" + pipe + ">";
 
   PrintOpCall(op, op_name, {0, 0}, {0, 0});
+}
+
+void CodeGenTileLangAscend::GemmOpCodegen(const CallNode *op) {
+  this->PrintIndent();
+  auto a_var = op->args[1].as<CallNode>()->args[1].as<VarNode>();
+  auto b_var = op->args[2].as<CallNode>()->args[1].as<VarNode>();
+  auto c_var = op->args[3].as<CallNode>()->args[1].as<VarNode>();
+
+  auto a_offset = PrintExpr(op->args[1].as<CallNode>()->args[2]);
+  auto b_offset = PrintExpr(op->args[2].as<CallNode>()->args[2]);
+  auto c_offset = PrintExpr(op->args[3].as<CallNode>()->args[2]);
+
+  auto a_name = var_idmap_[a_var];
+  auto b_name = var_idmap_[b_var];
+  auto c_name = var_idmap_[c_var];
+
+  this->stream << op_name << "(" << a_name << "[" << a_offset << "], "
+                << b_name << "[" << b_offset << "], " << c_name << "["
+                << c_offset << "], ascend_l0a, ascend_l0b, "
+                << PrintExpr(op->args[4]) << ");\n";
 }
 
 } // namespace codegen
