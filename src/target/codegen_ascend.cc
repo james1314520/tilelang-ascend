@@ -491,28 +491,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       std::string expr = PrintExpr(op->args[1]);
       os << op_name << "("
                    << expr << ")";
-    } else if (op_name == "AscendC::DumpTensor") {
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      this->stream << print_buffer_offset(op->args[1].as<CallNode>()) << ",";
-      this->stream << PrintExpr(op->args[2]) << ", ";
-      this->stream << PrintExpr(op->args[3]) << ");\n";
-    } else if (op_name == "tl::ascend::DumpTensor") {
-      add_decl_stream(decl_stream, "#include \"tl_templates/ascend/printf.h\"\n");
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      this->stream << print_buffer_offset(op->args[1].as<CallNode>()) << ",";
-      this->stream << PrintExpr(op->args[2]) << ", ";
-      this->stream << PrintExpr(op->args[3]) << ", ";
-      this->stream << PrintExpr(op->args[4]) << ", ";
-      this->stream << "(uint32_t[]){";
-      for (int i = 5; i < op->args.size(); ++i) {
-        if (i > 5) {
-          this->stream << ", ";
-        }
-        this->stream << PrintExpr(op->args[i]);
-      }
-      this->stream << "});\n";
     }
 
     if (op_name == "AscendC::AutoBarrier") {
@@ -679,6 +657,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     GemmOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_printf())) {
     PrintfOpCodegen(op, "AscendC::PRINTF");
+  } else if (op->op.same_as(tl::ascend_dump_tensor())) {
+    DumpTensorCodegen(op);
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1695,6 +1675,37 @@ void CodeGenTileLangAscend::PrintfOpCodegen(const CallNode *op, const std::strin
       this->stream << PrintExpr(op->args[i]);
     }
   }
+  this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::DumpTensorCodegen(const CallNode *op) {
+  add_decl_stream(decl_stream, "#include \"tl_templates/ascend/printf.h\"\n");
+  this->PrintIndent();
+  this->stream << "tl::ascend::DumpTensor" << "(";
+
+  // 0. Buffer指针
+  this->stream << print_buffer_offset(op->args[0].as<CallNode>()) << ",";
+  // 1. desc
+  this->stream << PrintExpr(op->args[1]) << ", ";
+  // 2. dump_size
+  this->stream << PrintExpr(op->args[2]) << ", ";
+  // 3. dim (len(shape_info))
+  this->stream << PrintExpr(op->args[3]) << ", ";
+  
+  // 4. shapeInfo数组指针
+  if (op->args.size() > 4) {
+    this->stream << "(uint32_t[]){";
+    for (int i = 4; i < op->args.size(); ++i) {
+      if (i > 4) {
+        this->stream << ", ";
+      }
+      this->stream << PrintExpr(op->args[i]);
+    }
+    this->stream << "}";
+  } else {
+    this->stream << "nullptr";
+  }
+  
   this->stream << ");\n";
 }
 

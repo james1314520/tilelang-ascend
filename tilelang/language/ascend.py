@@ -219,10 +219,15 @@ def dump_tensor(tensor: Buffer, desc: int, dump_size: int, shape_info: tuple=())
         raise ValueError(f"dump_size must be uint32, but your dump_size is {dump_size}")
 
     tensor_ptr = tensor.access_ptr("r")
-    if (len(shape_info) == 0):
-        return T.call_extern("handle", f"AscendC::DumpTensor", tensor_ptr, desc, dump_size)
-    else:
-        return T.call_extern("handle", f"tl::ascend::DumpTensor", tensor_ptr, desc, dump_size, len(shape_info), *shape_info)
+    return T.call_extern(
+        "handle",
+        tir.op.Op.get("tl.ascend_dump_tensor"),
+        tensor_ptr,
+        desc,
+        dump_size,
+        len(shape_info),
+        *shape_info,
+    )
 
 
 def set_deq_scale(scale: PrimExpr):
