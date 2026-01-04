@@ -318,6 +318,8 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         ascend_op = tl::ascend_rsqrt();
       } else if (op_name == "tir.fabs") {
         ascend_op = tl::ascend_abs();
+      } else if (op_name == "tir.bitwise_not") {
+        ascend_op = tl::ascend_bitwise_not();
       } else {
         if (call->op.same_as(tl::ascend_bitwise_not())) {
           ascend_op = tl::ascend_bitwise_not();
@@ -536,7 +538,12 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
     }
 
     if (auto call = expr.as<CallNode>()) {
-      if (call->op.same_as(tl::ascend_bitwise_and())) {
+      std::string op_name = "";
+
+      if (auto* op_ptr = call->op.as<OpNode>()) {
+        op_name = op_ptr->name;
+      }
+      if (call->op.same_as(tl::ascend_bitwise_and()) || op_name == "tir.bitwise_and") {
         if (op_type) *op_type = tl::ascend_bitwise_and();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
@@ -544,7 +551,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         }
         return true;
       }
-      if (call->op.same_as(tl::ascend_bitwise_or())) {
+      if (call->op.same_as(tl::ascend_bitwise_or()) || op_name == "tir.bitwise_or") {
         if (op_type) *op_type = tl::ascend_bitwise_or();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
@@ -552,7 +559,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         }
         return true;
       }
-      if (call->op.same_as(tl::ascend_bitwise_lshift())) {
+      if (call->op.same_as(tl::ascend_bitwise_lshift()) || op_name == "tir.shift_left") {
         if (op_type) *op_type = tl::ascend_bitwise_lshift();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
@@ -560,7 +567,7 @@ class AscendLowerParallelToVector : public arith::IRMutatorWithAnalyzer {
         }
         return true;
       }
-      if (call->op.same_as(tl::ascend_bitwise_rshift())) {
+      if (call->op.same_as(tl::ascend_bitwise_rshift()) || op_name == "tir.shift_right") {
         if (op_type) *op_type = tl::ascend_bitwise_rshift();
         if (operands && call->args.size() == 2) {
           operands->push_back(call->args[0]);
