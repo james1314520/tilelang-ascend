@@ -143,8 +143,6 @@ TVM_DLL const Op &ascend_set_flag();
 
 TVM_DLL const Op &ascend_wait_flag();
 
-TVM_DLL const Op &ascend_barrier_all();
-
 TVM_DLL const Op &ascend_pipe_barrier();
 
 TVM_DLL const Op &ascend_sync_all();

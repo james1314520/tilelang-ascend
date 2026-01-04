@@ -645,8 +645,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     FlagOpCodegen(op, "AscendC::WaitFlag");
   } else if (op->op.same_as(tl::ascend_set_flag())) {
     FlagOpCodegen(op, "AscendC::SetFlag");
-  } else if (op->op.same_as(tl::ascend_barrier_all())) {
-    PipeBarrierCodegen(op, "ALL");
   } else if (op->op.same_as(tl::ascend_pipe_barrier())) {
     PipeBarrierCodegen(op);
   } else if (op->op.same_as(tl::ascend_sync_all())) {
@@ -1628,11 +1626,9 @@ void CodeGenTileLangAscend::FlagOpCodegen(const CallNode *op, std::string op_nam
   PrintOpCall(op, op_name, {0, 0}, {2, op->args.size()});
 }
 
-void CodeGenTileLangAscend::PipeBarrierCodegen (const CallNode *op, std::string pipe) {
-  if (pipe.empty()) {
-    pipe = Downcast<StringImm>(op->args[0])->value;
-  }
-  
+void CodeGenTileLangAscend::PipeBarrierCodegen(const CallNode *op) {
+  std::string pipe = Downcast<StringImm>(op->args[0])->value;
+
   std::string op_name = "AscendC::PipeBarrier<PIPE_" + pipe + ">";
 
   PrintOpCall(op, op_name, {0, 0}, {0, 0});

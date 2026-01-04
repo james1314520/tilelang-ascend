@@ -205,7 +205,7 @@ def barrier_all():
     Returns:
         tvm.tir.Call: A TIR intrinsic call node.
     """
-    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_barrier_all"))
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_pipe_barrier"), "ALL")
 
 
 def pipe_barrier(pipe: _pipe):

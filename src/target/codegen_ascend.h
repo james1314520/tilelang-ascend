@@ -126,7 +126,7 @@ private:
 
   void FlagOpCodegen(const CallNode *op, std::string op_name);
 
-  void PipeBarrierCodegen (const CallNode *op, std::string pipe = "");
+  void PipeBarrierCodegen (const CallNode *op);
 
   void GemmOpCodegen(const CallNode *op);
 
