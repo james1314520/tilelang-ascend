@@ -130,6 +130,8 @@ private:
 
   void GemmOpCodegen(const CallNode *op);
 
+  void PrintfOpCodegen(const CallNode *op, const std::string& op_name);
+
 private:
   // Whether scope such as "__shared__" or "__constant__"  is part of type.
   bool IsScopePartOfType() const final { return false; }

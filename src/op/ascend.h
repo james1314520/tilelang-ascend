@@ -152,6 +152,8 @@ TVM_DLL const Op &ascend_sync_all();
 TVM_DLL const Op &ascend_gemm_v0();
 
 TVM_DLL const Op &ascend_gemm_v1();
+
+TVM_DLL const Op &ascend_printf();
 } // namespace tl
 } // namespace tvm
 

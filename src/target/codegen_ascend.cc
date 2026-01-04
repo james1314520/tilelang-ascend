@@ -491,24 +491,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       std::string expr = PrintExpr(op->args[1]);
       os << op_name << "("
                    << expr << ")";
-    } else if (op_name == "AscendC::PRINTF" || op_name == "AscendC::printf") {
-      this->PrintIndent();
-      this->stream << op_name << "(";
-      for (size_t i = 1; i < op->args.size(); ++i) {
-        if (i > 1) {
-          this->stream << ", ";
-        }
-        if (auto *arg = op->args[i].as<CallNode>()) {
-          if (arg->op.same_as(builtin::tvm_access_ptr())) {
-            this->stream << print_buffer_offset(arg, false) << ".GetPhyAddr()";
-          } else {
-            std::cout << "CallNode with builtin::tvm_access_ptr is requested, but got " << op->args[i] << ".\n";
-          }
-        } else {
-          this->stream << PrintExpr(op->args[i]);
-        }
-      }
-      this->stream << ");\n";
     } else if (op_name == "AscendC::DumpTensor") {
       this->PrintIndent();
       this->stream << op_name << "(";
@@ -695,6 +677,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     GemmOpCodegen(op);
   } else if (op->op.same_as(tl::ascend_gemm_v1())) {
     GemmOpCodegen(op);
+  } else if (op->op.same_as(tl::ascend_printf())) {
+    PrintfOpCodegen(op, "AscendC::PRINTF");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1692,6 +1676,26 @@ void CodeGenTileLangAscend::GemmOpCodegen(const CallNode *op) {
                 << b_name << "[" << b_offset << "], " << c_name << "["
                 << c_offset << "], ascend_l0a, ascend_l0b, "
                 << PrintExpr(op->args[4]) << ");\n";
+}
+
+void CodeGenTileLangAscend::PrintfOpCodegen(const CallNode *op, const std::string& op_name) {
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (size_t i = 0; i < op->args.size(); ++i) {
+    if (i > 0) {
+      this->stream << ", ";
+    }
+    if (auto *arg = op->args[i].as<CallNode>()) {
+      if (arg->op.same_as(builtin::tvm_access_ptr())) {
+        this->stream << print_buffer_offset(arg, false) << ".GetPhyAddr()";
+      } else {
+        std::cout << "CallNode with builtin::tvm_access_ptr is requested, but got " << op->args[i] << ".\n";
+      }
+    } else {
+      this->stream << PrintExpr(op->args[i]);
+    }
+  }
+  this->stream << ");\n";
 }
 
 } // namespace codegen

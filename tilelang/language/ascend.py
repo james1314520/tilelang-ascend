@@ -209,7 +209,7 @@ def printf(format_str: str, *args):
     new_args = tuple(args_list)
 
     all_args = (escaped_format, ) + new_args
-    return T.call_extern("handle", f"AscendC::PRINTF", *all_args)
+    return tir.call_intrin("handle", tir.op.Op.get("tl.ascend_printf"), *all_args)
 
 
 def dump_tensor(tensor: Buffer, desc: int, dump_size: int, shape_info: tuple=()):
