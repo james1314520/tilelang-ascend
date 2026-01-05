@@ -585,7 +585,7 @@ def unary_op(dst: Buffer, src0: Buffer, op: str):
 
     return tir.call_intrin(
         "handle",
-        tir.op.Op.get("tl.ascend_" + op),
+        tir.op.Op.get(f"tl.ascend_{op}"),
         dst.access_ptr("w"),
         src0.access_ptr("r"),
         size_0,
@@ -682,7 +682,7 @@ def scalar_op(
 
     return tir.call_intrin(
         "handle",
-        tir.op.Op.get("tl.ascend_" + op_tl),
+        tir.op.Op.get(f"tl.ascend_{op_tl}"),
         dst.access_ptr("w"),
         src0.access_ptr("r"),
         scalar_value,
