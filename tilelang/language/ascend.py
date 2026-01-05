@@ -296,7 +296,7 @@ def gemm_v0(A, B, C, transpose_A=False, transpose_B=False, init=False):
     return T.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_gemm_v0"),
-        f"tl::ascend::gemm_v0<{_dtype(A)}, {_dtype(C)}, {M}, {N}, {K}, {str(transpose_A).lower()}, {str(transpose_B).lower()}>",
+        f"gemm_v0<{_dtype(A)}, {_dtype(C)}, {M}, {N}, {K}, {str(transpose_A).lower()}, {str(transpose_B).lower()}>",
         Aptr,
         Bptr,
         Cptr,
@@ -366,7 +366,7 @@ def gemm_v1(A, B, C, transpose_A=False, transpose_B=False, init=False):
     return T.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_gemm_v1"),
-        f"tl::ascend::gemm_v1<{_dtype(A)}, {_dtype(C)}, {L1_BLOCK_M}, {L1_BLOCK_N}, {L1_BLOCK_K}, {BLOCK_M}, {BLOCK_N}, {L1_BLOCK_K}, {str(transpose_A).lower()}, {str(transpose_B).lower()}>",
+        f"gemm_v1<{_dtype(A)}, {_dtype(C)}, {L1_BLOCK_M}, {L1_BLOCK_N}, {L1_BLOCK_K}, {BLOCK_M}, {BLOCK_N}, {L1_BLOCK_K}, {str(transpose_A).lower()}, {str(transpose_B).lower()}>",
         Aptr,
         Bptr,
         Cptr,

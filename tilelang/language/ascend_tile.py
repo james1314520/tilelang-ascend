@@ -860,7 +860,7 @@ def reduce(out: Buffer, buffer: Buffer, tmp: Buffer, reduce_type: str, dim: int)
     return T.call_intrin(
         "handle",
         tir.op.Op.get("tl.ascend_reduce"),
-        f"tl::ascend::{reduce_type}<{dtype}, {shape}, {dim}>",
+        f"{reduce_type}<{dtype}, {shape}, {dim}>",
         out,
         buffer,
         tmp,

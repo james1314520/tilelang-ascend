@@ -1531,7 +1531,7 @@ void CodeGenTileLangAscend::GatherCodegen(const CallNode *op,
 }
 
 void CodeGenTileLangAscend::ReduceOpCodegen(const CallNode *op) {
-  std::string op_name = Downcast<StringImm>(op->args[0])->value;
+  std::string op_name = "tl::ascend::" + Downcast<StringImm>(op->args[0])->value;
 
   std::vector<std::string> var_names;
   for (int i = 1; i < op->args.size(); i++) {
@@ -1654,6 +1654,8 @@ void CodeGenTileLangAscend::PipeBarrierCodegen(const CallNode *op) {
 }
 
 void CodeGenTileLangAscend::GemmOpCodegen(const CallNode *op) {
+  std::string op_name = "tl::ascend::" + Downcast<StringImm>(op->args[0])->value;
+  
   this->PrintIndent();
   auto a_var = op->args[1].as<CallNode>()->args[1].as<VarNode>();
   auto b_var = op->args[2].as<CallNode>()->args[1].as<VarNode>();
