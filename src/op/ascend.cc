@@ -261,11 +261,17 @@ NpuirReduce::NpuirReduce(Array<PrimExpr> args, BufferMap vmap) {
   std::string str_reduce_dims = args[2].as<StringImmNode>()->value;
   std::stringstream ss(str_reduce_dims);
   std::string dim;
+  int src_rank = static_cast<int>(src->shape.size());
   while (std::getline(ss, dim, ',')) {
-    reduce_dims.push_back(std::stoi(dim));
+    int axis = std::stoi(dim);
+    if (axis < 0) {
+      axis += src_rank;
+    }
+    reduce_dims.push_back(axis);
   }
 
   reduce_mode = args[3].as<StringImmNode>()->value;
+  clear = args[4].as<Bool>().value();
 }
 
 NpuirCumsum::NpuirCumsum(Array<PrimExpr> args, BufferMap vmap) {
@@ -562,7 +568,7 @@ TIR_REGISTER_TL_OP(NpuirCast, npuir_cast)
                                Integer(CallEffectKind::kOpaque));
 
 TIR_REGISTER_TL_OP(NpuirReduce, npuir_reduce)
-    .set_num_inputs(4)
+    .set_num_inputs(5)
     .set_attr<TCallEffectKind>("TCallEffectKind",
                                Integer(CallEffectKind::kOpaque));
 

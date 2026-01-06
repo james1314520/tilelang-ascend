@@ -257,6 +257,7 @@ public:
   std::vector<int64_t> reduce_dims;
 
   Array<Range> src_range, dst_range;
+  bool clear;
 };
 
 class NpuirCumsum : public Operator {
