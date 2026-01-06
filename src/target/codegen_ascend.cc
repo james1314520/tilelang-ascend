@@ -821,7 +821,7 @@ void CodeGenTileLangAscend::VisitExpr_(const FloatImmNode *op,
 void CodeGenTileLangAscend::PreFunctionBody(const PrimFunc &f) {
   int func_scope = this->BeginScope();
   this->PrintIndent();
-  stream << "KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2)\n";
+  stream << "KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2);\n";
   this->PrintIndent();
   stream << "AscendC::TPipe pipe;\n\n";
   ICHECK(this->para_.size() % 3 == 0)
@@ -1685,7 +1685,7 @@ void CodeGenTileLangAscend::PrintfOpCodegen(const CallNode *op,
     }
     if (auto *arg = op->args[i].as<CallNode>()) {
       if (arg->op.same_as(builtin::tvm_access_ptr())) {
-        this->stream << print_buffer_offset(arg, false) << ".GetPhyAddr()";
+        this->stream << PrintBufferOffset(arg, false) << ".GetPhyAddr()";
       } else {
         std::cout
             << "CallNode with builtin::tvm_access_ptr is requested, but got "
@@ -1699,12 +1699,12 @@ void CodeGenTileLangAscend::PrintfOpCodegen(const CallNode *op,
 }
 
 void CodeGenTileLangAscend::DumpTensorCodegen(const CallNode *op) {
-  add_decl_stream(decl_stream, "#include \"tl_templates/ascend/printf.h\"\n");
+  AddDeclStream(decl_stream, "#include \"tl_templates/ascend/printf.h\"\n");
   this->PrintIndent();
   this->stream << "tl::ascend::DumpTensor" << "(";
 
   // 0. Buffer指针
-  this->stream << print_buffer_offset(op->args[0].as<CallNode>()) << ",";
+  this->stream << PrintBufferOffset(op->args[0].as<CallNode>()) << ",";
   // 1. desc
   this->stream << PrintExpr(op->args[1]) << ", ";
   // 2. dump_size
