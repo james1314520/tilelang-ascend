@@ -517,5 +517,21 @@ TIR_DEFINE_TL_BUILTIN(ascend_printf)
 TIR_DEFINE_TL_BUILTIN(ascend_dump_tensor)
     .set_num_inputs(-1)
     .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_bilinear_interpolation)
+    .set_num_inputs(11)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_wholereducemax)
+    .set_num_inputs(8)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_wholereducemin)
+    .set_num_inputs(8)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
+
+TIR_DEFINE_TL_BUILTIN(ascend_wholereducesum)
+    .set_num_inputs(7)
+    .set_attr<TCallEffectKind>("TCallEffectKind", Integer(CallEffectKind::kOpaque));
 } // namespace tl
 } // namespace tvm

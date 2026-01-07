@@ -483,7 +483,8 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       this->PrintIndent();
       this->stream << op_name << "(" << a_name << "[" << a_offset << "],"
                    << b_name << "[" << b_offset << "]," << c_name << "["
-                   << c_offset << "], " << PrintExpr(op->args[4]) << ");\n";
+                   << c_offset << "], " << PrintExpr(op->args[4]) << ", "
+                   << PrintExpr(op->args[5]) << ");\n";
     } else if (op_name.find("thread_block_swizzle") != std::string::npos) {
       std::string expr = PrintExpr(op->args[1]);
       os << op_name << "(" << expr << ")";
@@ -655,6 +656,14 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     PrintfOpCodegen(op, "AscendC::PRINTF");
   } else if (op->op.same_as(tl::ascend_dump_tensor())) {
     DumpTensorCodegen(op);
+  } else if (op->op.same_as(tl::ascend_bilinear_interpolation())) {
+    BilinearInterpolationCodegen(op);
+  } else if (op->op.same_as(tl::ascend_wholereducemax())) {
+    WholeReduceOpCodegen(op, "AscendC::WholeReduceMax");
+  } else if (op->op.same_as(tl::ascend_wholereducemin())) {
+    WholeReduceOpCodegen(op, "AscendC::WholeReduceMin");
+  } else if (op->op.same_as(tl::ascend_wholereducesum())) {
+    PrintOpCall(op, "AscendC::WholeReduceSum", {0, 2}, {2, op->args.size()});
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1750,6 +1759,46 @@ void CodeGenTileLangAscend::DumpTensorCodegen(const CallNode *op) {
   }
 
   this->stream << ");\n";
+}
+
+void CodeGenTileLangAscend::BilinearInterpolationCodegen(const CallNode *op) {
+  std::string op_name = "AscendC::BilinearInterpolation";
+  this->PrintIndent();
+  auto var_name = PrintBufferOffset(op->args[0].as<CallNode>());
+  auto var_name_1 = PrintBufferOffset(op->args[1].as<CallNode>());
+  auto var_name_2 = PrintBufferOffset(op->args[2].as<CallNode>());
+  auto var_name_3 = PrintBufferOffset(op->args[3].as<CallNode>());
+  auto var_name_4 = PrintBufferOffset(op->args[10].as<CallNode>());
+  this->stream << op_name << "(" << var_name << ", " << var_name_1 << ", "
+               << var_name_2 << ", " << var_name_3 << ", "
+               << PrintExpr(op->args[4]) << ", " << PrintExpr(op->args[5])
+               << ", " << PrintExpr(op->args[6]) << ", "
+               << PrintExpr(op->args[7]) << ", " << PrintExpr(op->args[8])
+               << ", " << PrintExpr(op->args[9]) << ", " << var_name_4
+               << ");\n";
+}
+
+void CodeGenTileLangAscend::WholeReduceOpCodegen(const CallNode *op,
+                                                 const std::string &op_name) {
+  std::vector<std::string> var_names;
+  for (int i = 0; i < 2; i++) {
+    auto var_name = PrintBufferOffset(op->args[i].as<CallNode>());
+    var_names.push_back(var_name);
+  }
+  this->PrintIndent();
+  this->stream << op_name << "(";
+  for (int i = 0; i < var_names.size(); i++) {
+    this->stream << var_names[i];
+    if (i != var_names.size() - 1) {
+      this->stream << ", ";
+    }
+  }
+  for (int i = 2; i < op->args.size() - 1; i++) {
+    this->stream << ", " << PrintExpr(op->args[i]);
+  }
+  this->stream << ", " << "AscendC::ReduceOrder::"
+               << Downcast<StringImm>(op->args[op->args.size() - 1])->value
+               << ");\n";
 }
 
 } // namespace codegen
