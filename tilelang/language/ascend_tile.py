@@ -436,7 +436,7 @@ def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
 def binary_op(
     dst: Union[Buffer, BufferRegion],
     src0: Union[Buffer, BufferRegion],
-    src1: Union[Buffer, BufferLoad, PrimExpr, float],
+    src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr, float],
     op: str,
 ):
     def _handle_buffer_region(br: BufferRegion, mask):
@@ -474,9 +474,22 @@ def binary_op(
             size_0,
         )
 
-    elif isinstance(src1, (PrimExpr, float)):
+    elif isinstance(src1, (PrimExpr, float, int)):
         return T.call_intrin(
             "handle", tir.op.Op.get(f"tl.ascend_{op}s"), dst_ptr, src0_ptr, src1, size_0
+        )
+    elif isinstance(src1, BufferRegion):
+        src1_ptr, src1_extent = _handle_buffer_region(src1, "r")
+        size_2 = math.prod(src1_extent)
+        assert size_0 == size_2, "size must be same"
+
+        return T.call_intrin(
+            "handle",
+            tir.op.Op.get(f"tl.ascend_{op}"),
+            dst_ptr,
+            src0_ptr,
+            src1_ptr,
+            size_0,
         )
     else:
         return T.call_intrin(
@@ -489,7 +502,7 @@ def binary_op(
         )
 
 
-def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise addition: dst = src0 + src1.
 
     Args:
@@ -500,7 +513,7 @@ def add(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     return binary_op(dst, src0, src1, "add")
 
 
-def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
+def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad]):
     """Performs element-wise subtraction: dst = src0 - src1.
 
     Args:
@@ -510,8 +523,7 @@ def sub(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
     """
     return binary_op(dst, src0, src1, "sub")
 
-
-def mul(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def mul(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise multiplication: dst = src0 * src1.
 
     Args:
@@ -521,8 +533,7 @@ def mul(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     """
     return binary_op(dst, src0, src1, "mul")
 
-
-def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
+def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad]):
     """Performs element-wise division: dst = src0 / src1.
 
     Args:
@@ -533,7 +544,7 @@ def div(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad]):
     return binary_op(dst, src0, src1, "div")
 
 
-def max(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def max(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise maximum: dst = max(src0, src1).
 
     Args:
@@ -544,7 +555,7 @@ def max(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     return binary_op(dst, src0, src1, "max")
 
 
-def min(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def min(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise minimum: dst = min(src0, src1).
 
     Args:
@@ -555,7 +566,7 @@ def min(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
     return binary_op(dst, src0, src1, "min")
 
 
-def bitwise_and(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def bitwise_and(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise bitwise AND: dst = src0 & src1.
 
     Args:
@@ -566,7 +577,7 @@ def bitwise_and(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimE
     return binary_op(dst, src0, src1, "bitwise_and")
 
 
-def bitwise_or(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferLoad, PrimExpr]):
+def bitwise_or(dst: Buffer, src0: Buffer, src1: Union[Buffer, BufferRegion, BufferLoad, PrimExpr]):
     """Performs element-wise bitwise OR: dst = src0 | src1.
 
     Args:
@@ -761,6 +772,36 @@ def bitwise_rshift(dst: Buffer, src0: Buffer, scalarValue: PrimExpr):
         scalarValue,
         size_0,
     )
+
+
+
+def bilinear_interpolation(dst: Buffer, src0: Buffer, src0_offset: Buffer, src1: Buffer, mask: PrimExpr,
+                           h_repeat: PrimExpr, repeat_mode: bool, dst_blk_stride: PrimExpr, v_r_offset: PrimExpr,
+                           v_repeat: PrimExpr, shared_tmp_buffer: Buffer):
+    return T.call_extern("handle", "AscendC::BilinearInterpolation", dst.access_ptr("w"), src0.access_ptr("r"),
+                         src0_offset.access_ptr("r"), src1.access_ptr("r"), mask, h_repeat, repeat_mode, dst_blk_stride, v_r_offset,
+                         v_repeat, shared_tmp_buffer.access_ptr("r"))
+
+
+def wholereducemax(dst: Buffer, src: Buffer, mask: PrimExpr, repeattimes: PrimExpr, dstrepstride: PrimExpr, srcblkstride: PrimExpr,
+                   srcrepstride: PrimExpr, ReduceOrder: str = "ORDER_VALUE_INDEX"):
+
+    return T.call_extern("handle", "AscendC::WholeReduceMax", dst.access_ptr("w"), src.access_ptr("r"), mask, repeattimes, dstrepstride,
+                         srcblkstride, srcrepstride, ReduceOrder)
+
+
+def wholereducemin(dst: Buffer, src: Buffer, mask: PrimExpr, repeattimes: PrimExpr, dstrepstride: PrimExpr, srcblkstride: PrimExpr,
+                   srcrepstride: PrimExpr, ReduceOrder: str = "ORDER_VALUE_INDEX"):
+
+    return T.call_extern("handle", "AscendC::WholeReduceMin", dst.access_ptr("w"), src.access_ptr("r"), mask, repeattimes, dstrepstride,
+                         srcblkstride, srcrepstride, ReduceOrder)
+
+
+def wholereducesum(dst: Buffer, src: Buffer, mask: PrimExpr, repeattimes: PrimExpr, dstrepstride: PrimExpr, srcblkstride: PrimExpr,
+                   srcrepstride: PrimExpr):
+
+    return T.call_extern("handle", "AscendC::WholeReduceSum", dst.access_ptr("w"), src.access_ptr("r"), mask, repeattimes, dstrepstride,
+                         srcblkstride, srcrepstride)
 
 
 def sort32(dst: Buffer, src0: Buffer, src1: Buffer):

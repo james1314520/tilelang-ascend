@@ -431,9 +431,14 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       auto dst_type = op->args[2].as<CallNode>()->args[0].as<CallNode>()->dtype;
 
       static const std::unordered_map<std::string, int> kCopyOpExtraArgs = {
-          {"copy_l0c_to_gm", 1}, {"copy_gm_to_l1", 1}, {"copy_l1_to_l0a", 0},
-          {"copy_l1_to_l0b", 0}, {"copy_gm_to_ub", 1}, {"copy_ub_to_gm", 1},
-          {"copy_ub_to_ub", 0}};
+        {"copy_l0c_to_gm", 1},
+        {"copy_gm_to_l1", 1},
+        {"copy_l1_to_l0a", 2},
+        {"copy_l1_to_l0b", 2},
+        {"copy_gm_to_ub", 1},
+        {"copy_ub_to_gm", 1},
+        {"copy_ub_to_ub", 0}
+      };
 
       bool found = false;
       int extra_args = 0;
@@ -732,10 +737,24 @@ void CodeGenTileLangAscend::VisitStmt_(const AllocateNode *op) {
 
   auto print_buffer = [&](const std::string &pos) {
     this->PrintIndent();
-    if (address_map_.find(op->buffer_var) != address_map_.end()) {
+
+    PrimExpr target_expr;
+    bool found_by_name = false;
+    std::string target_var_name = op->buffer_var->name_hint;
+
+    for (const auto& pair : address_map_) {
+      Var var_key = pair.first;
+      if (var_key->name_hint == target_var_name) {
+        target_expr = pair.second;
+        found_by_name = true;
+        break;
+      }
+    }
+
+    if (found_by_name) {
       stream << "auto " << vid << " = " << pos << ".GetWithOffset<" << type
              << ">(" << op->ConstantAllocationSize() << ", "
-             << PrintExpr(address_map_[op->buffer_var]) << ");\n";
+             << PrintExpr(target_expr) << ");\n";
     } else {
       if (address_offset_.find(String(pos)) == address_offset_.end()) {
         address_offset_.Set(String(pos), 0);
@@ -966,7 +985,11 @@ void CodeGenTileLangAscend::PrintHostFunc(
       os << ", ";
     }
     arg_names.push_back(v->name_hint);
+    if (v.dtype().is_handle()) {
     os << "uint8_t* " << v->name_hint;
+    } else {
+      os << getType(v.dtype()) << " " << v->name_hint;
+  }
   }
   ProcessHostInput(os, arg_names, shape_vars);
   os << ", aclrtStream stream) {\n  ";
@@ -1380,25 +1403,25 @@ void CodeGenTileLangAscend::SubsOpCodegen(const CallNode *op) {
   if (op->args[2].as<CallNode>()) {
     auto var_name = PrintBufferOffset(op->args[2].as<CallNode>(), false);
 
-    this->PrintIndent();
-    this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
-    this->PrintIndent();
-    this->stream << "auto " << var_name << "_scalar = " << var_name
-                 << ".GetValue(" << PrintExpr(op->args[op->args.size() - 2])
-                 << ");\n";
-    var_names.push_back("- " + var_name + "_scalar");
-  } else {
-    var_names.push_back(PrintExpr(op->args[op->args.size() - 2]));
-  }
-  this->PrintIndent();
-  this->stream << "AscendC::Adds"
-               << "(";
-  for (int i = 0; i < var_names.size(); i++) {
-    this->stream << var_names[i];
-    if (i != var_names.size() - 1) {
-      this->stream << ", ";
-    }
-  }
+        this->PrintIndent();
+        this->stream << "AscendC::PipeBarrier<PIPE_ALL>();\n";
+        this->PrintIndent();
+        this->stream << "auto " << var_name << "_scalar = " << var_name
+                     << ".GetValue(" << PrintExpr(op->args[op->args.size() - 2])
+                     << ");\n";
+        var_names.push_back("-" + var_name + "_scalar");
+      } else {
+        var_names.push_back("-" + PrintExpr(op->args[op->args.size() - 2]));
+      }
+      this->PrintIndent();
+      this->stream << "AscendC::Adds"
+                   << "(";
+      for (int i = 0; i < var_names.size(); i++) {
+        this->stream << var_names[i];
+        if (i != var_names.size() - 1) {
+          this->stream << ", ";
+        }
+      }
 
   this->stream << ", " << PrintExpr(op->args[op->args.size() - 1]) << ");\n";
 }
