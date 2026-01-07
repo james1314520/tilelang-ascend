@@ -432,6 +432,32 @@ def init_sort_buf(buffer: Buffer, num: PrimExpr, rsv: PrimExpr):
         num,
     )
 
+def brcb(dst: Buffer, src: Buffer, repeat_times: PrimExpr, dst_blk_stride: PrimExpr, dst_repeat_stride: PrimExpr):
+    """Broadcast repeat copy block intrinsic.
+
+    .. warning::
+        **NOT IMPLEMENTED**: The backend code generation (codegen) for this interface
+        has **NOT** been implemented yet. **DO NOT USE** this function, as it will
+        result in compilation or runtime errors.
+
+    Args:
+        dst (Buffer): The destination buffer.
+        src (Buffer): The source buffer.
+        repeat_times (PrimExpr): The number of times to repeat the operation.
+        dst_blk_stride (PrimExpr): The stride between blocks in the destination.
+        dst_repeat_stride (PrimExpr): The stride between repetitions in the destination.
+
+    Returns:
+        tvm.tir.Call: A TIR external call node representing the operation.
+    """
+
+    src_size = math.prod(src.shape)
+    assert src_size >= (repeat_times * 8), "src size must be not less then repeat_times * 8"
+
+    src_ptr = src.access_ptr("r")
+    dst_ptr = dst.access_ptr("w")
+
+    return T.call_extern("handle", f"tl::ascend::brcb<{_dtype(src)}>", dst_ptr, src_ptr, repeat_times, dst_blk_stride, dst_repeat_stride)
 
 def binary_op(
     dst: Union[Buffer, BufferRegion],
