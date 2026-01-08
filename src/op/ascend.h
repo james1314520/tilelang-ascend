@@ -162,6 +162,12 @@ TVM_DLL const Op &ascend_wholereducemax();
 TVM_DLL const Op &ascend_wholereducemin();
 
 TVM_DLL const Op &ascend_wholereducesum();
+
+TVM_DLL const Op &ascend_auto_barrier();
+
+TVM_DLL const Op &ascend_auto_set_flag();
+
+TVM_DLL const Op &ascend_auto_wait_flag();
 } // namespace tl
 } // namespace tvm
 

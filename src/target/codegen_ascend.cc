@@ -490,32 +490,6 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
       os << op_name << "(" << expr << ")";
     }
 
-    if (op_name == "AscendC::AutoBarrier") {
-      this->PrintIndent();
-      std::string pipeline = "PIPE_ALL";
-      if (op->args.size() > 1) {
-        if (auto pipeline_imm = op->args[1].as<StringImmNode>()) {
-          pipeline = pipeline_imm->value;
-        }
-      }
-      this->stream << "AscendC::PipeBarrier<" << pipeline << ">();\n";
-      return;
-    } else if (op_name == "AscendC::AutoSetFlag") {
-      this->PrintIndent();
-      auto event_type = Downcast<StringImm>(op->args[1])->value;
-      auto event_id = PrintExpr(op->args[2]);
-      this->stream << "AscendC::SetFlag<AscendC::HardEvent::" << event_type
-                   << ">(" << event_id << ");\n";
-      return;
-    } else if (op_name == "AscendC::AutoWaitFlag") {
-      this->PrintIndent();
-      auto event_type = Downcast<StringImm>(op->args[1])->value;
-      auto event_id = PrintExpr(op->args[2]);
-      this->stream << "AscendC::WaitFlag<AscendC::HardEvent::" << event_type
-                   << ">(" << event_id << ");\n";
-      return;
-    }
-
     // For AutoCrossCoreSetFlag and AutoCrossCoreWaitFlag, we use the op_name
     // with adding "Auto" prefix.
     if (op_name == "AscendC::AutoCrossCoreSetFlag") {
@@ -664,6 +638,12 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     WholeReduceOpCodegen(op, "AscendC::WholeReduceMin");
   } else if (op->op.same_as(tl::ascend_wholereducesum())) {
     PrintOpCall(op, "AscendC::WholeReduceSum", {0, 2}, {2, op->args.size()});
+  } else if (op->op.same_as(tl::ascend_auto_barrier())) {
+    AutoBarrierCodegen(op);
+  } else if (op->op.same_as(tl::ascend_auto_set_flag())) {
+    AutoFlagOpCodegen(op, "SetFlag");
+  } else if (op->op.same_as(tl::ascend_auto_wait_flag())) {
+    AutoFlagOpCodegen(op, "WaitFlag");
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
@@ -1798,6 +1778,27 @@ void CodeGenTileLangAscend::WholeReduceOpCodegen(const CallNode *op,
   }
   this->stream << ", " << "AscendC::ReduceOrder::"
                << Downcast<StringImm>(op->args[op->args.size() - 1])->value
+               << ");\n";
+}
+
+void CodeGenTileLangAscend::AutoBarrierCodegen(const CallNode *op) {
+  this->PrintIndent();
+  std::string pipeline = "PIPE_ALL";
+  if (op->args.size() >= 1) {
+    if (auto pipeline_imm = op->args[0].as<StringImmNode>()) {
+      pipeline = pipeline_imm->value;
+    }
+  }
+  this->stream << "AscendC::PipeBarrier<" << pipeline << ">();\n";
+}
+
+void CodeGenTileLangAscend::AutoFlagOpCodegen(const CallNode *op,
+                                              std::string op_name) {
+  this->PrintIndent();
+  auto event_type = Downcast<StringImm>(op->args[0])->value;
+  auto event_id = PrintExpr(op->args[1]);
+  this->stream << "AscendC::" << op_name
+               << "<AscendC::HardEvent::" << event_type << ">(" << event_id
                << ");\n";
 }
 
