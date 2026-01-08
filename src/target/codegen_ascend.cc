@@ -485,10 +485,7 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
                    << b_name << "[" << b_offset << "]," << c_name << "["
                    << c_offset << "], " << PrintExpr(op->args[4]) << ", "
                    << PrintExpr(op->args[5]) << ");\n";
-    } else if (op_name.find("thread_block_swizzle") != std::string::npos) {
-      std::string expr = PrintExpr(op->args[1]);
-      os << op_name << "(" << expr << ")";
-    }
+    } 
   } else if (op->op.same_as(tl::loop_break())) {
     this->PrintIndent();
     this->stream << "break;\n";
@@ -637,6 +634,10 @@ void CodeGenTileLangAscend::VisitExpr_(const CallNode *op, std::ostream &os) {
     this->PrintIndent();
     auto flag_id = op->args[0].as<IntImmNode>()->value;
     this->stream << "AscendC::CrossCoreWaitFlag(" << flag_id << ");\n";
+  } else if (op->op.same_as(tl::ascend_use_swizzle())) {
+    std::string op_name = "tl::ascend::" + Downcast<StringImm>(op->args[0])->value;
+    std::string expr = PrintExpr(op->args[1]);
+    os << op_name << "(" << expr << ")";
   } else {
     tvm::Dump(op);
     CodeGenC::VisitExpr_(op, os);
