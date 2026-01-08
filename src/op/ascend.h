@@ -168,6 +168,10 @@ TVM_DLL const Op &ascend_auto_barrier();
 TVM_DLL const Op &ascend_auto_set_flag();
 
 TVM_DLL const Op &ascend_auto_wait_flag();
+
+TVM_DLL const Op &ascend_auto_set_cross_flag();
+
+TVM_DLL const Op &ascend_auto_wait_cross_flag();
 } // namespace tl
 } // namespace tvm
 
