@@ -1130,6 +1130,11 @@ void CodeGenTileLangNPUIRDEV::VselectCodegen(const CallNode *op) {
   selOp->setAttr("broadcast", builder.getDenseI64ArrayAttr(broadcastDim));
 }
 
+/// Generate hivm.hir.vbrc for tl.npuir_brc.
+/// before:
+///    T.npuir_brc(A, B)
+/// after:
+///    %.* = hivm.hir.vbrc ins(A) outs(B) -> tensor<>
 void CodeGenTileLangNPUIRDEV::VbrcCodegen(const CallNode *op) {
   tvm::tl::NpuirBrc npuirop(op->args, this->vmap);
   mlir::Value src;
@@ -1142,20 +1147,23 @@ void CodeGenTileLangNPUIRDEV::VbrcCodegen(const CallNode *op) {
       src = MakeValue(npuirop.in);
     }
   } else {
-    src = GenSubviewFromRegion(npuirop.src, npuirop.src_range);
-    auto srcMemref = llvm::dyn_cast<TypedValue<MemRefType>>(src);
-    inBufferShape = srcMemref.getType().getShape();
+    src = GetVarValue(npuirop.src);
+    auto srcTensor = llvm::dyn_cast<TypedValue<RankedTensorType>>(src);
+    inBufferShape = srcTensor.getType().getShape();
   }
-  Value dst = GenSubviewFromRegion(npuirop.dst, npuirop.dst_range);
+  Value dst = GetVarValue(npuirop.dst);
   auto broadcastDimAttr = builder.getDenseI64ArrayAttr({});
   if (!inBufferShape.empty()) {
-    auto outMemref = llvm::dyn_cast<TypedValue<MemRefType>>(dst);
-    auto outBufferShape = outMemref.getType().getShape();
+    auto outTensor = llvm::dyn_cast<TypedValue<RankedTensorType>>(dst);
+    auto outBufferShape = outTensor.getType().getShape();
     auto broadcastDim = getBroadcastDim(npuirop.src->shape, npuirop.dst->shape);
     broadcastDimAttr = builder.getDenseI64ArrayAttr(broadcastDim);
   }
-  builder.create<mlir::hivm::VBrcOp>(builder.getUnknownLoc(), TypeRange{},
+  mlir::Type dst_type = dst.getType();
+  mlir::TypeRange result_tensors(&dst_type, 1);
+  auto newCastOp = builder.create<mlir::hivm::VBrcOp>(builder.getUnknownLoc(), result_tensors,
                                       src, dst, broadcastDimAttr);
+  SetVarValue(npuirop.dst, newCastOp->getResult(0));
 }
 
 /// Generate hivm.hir.vcast for tl.npuir_cast.
@@ -1180,6 +1188,11 @@ void CodeGenTileLangNPUIRDEV::VcastCodegen(const CallNode *op) {
   SetVarValue(npuirop.dst, newCastOp->getResult(0));
 }
 
+/// Generate hivm.hir.vreduce for tl.npuir_cast.
+/// before:
+///    T.npuir_reduce(A, B, "rint")
+/// after:
+///    %.* = hivm.hir.vreduce ins(A) outs(B) -> tensor<>
 void CodeGenTileLangNPUIRDEV::VreduceCodegen(const CallNode *op) {
   tvm::tl::NpuirReduce npuirop(op->args, this->vmap);
   Value src = GetVarValue(npuirop.src);
