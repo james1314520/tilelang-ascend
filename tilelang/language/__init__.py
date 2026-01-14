@@ -91,6 +91,8 @@ from .customize_npuir import (
     npuir_store_nz2nd,
     npuir_store_fixpipe,
     npuir_brc,
+    npuir_fill, 
+    npuir_clear,
     npuir_cast,
     npuir_reduce,
     npuir_reduce as reduce,

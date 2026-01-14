@@ -1,6 +1,7 @@
 """The language interface for tl programs."""
 
 import tilelang.language as T
+from tilelang.language import get_let_value, has_let_value
 from tvm.tir import PrimExpr, Buffer, BufferRegion, BufferLoad, Var
 from typing import List, Union, Optional
 from tvm import ir, tir
@@ -370,7 +371,7 @@ def npuir_brc(src, dst):
     src_extent = _get_extent(src)
     dst_extent = _get_extent(dst)
 
-    if not isinstance(src, tir.Var):
+    if not isinstance(src, (tir.Var, tir.PrimExpr)):
         assert len(src_extent) == len(
             dst_extent), "The input vector and output vector must have same rank."
 
@@ -381,6 +382,50 @@ def npuir_brc(src, dst):
     src = _to_region(src, "r", src_extent)
     dst = _to_region(dst, "w", dst_extent)
     return tir.call_intrin("handle", tir.op.Op.get("tl.npuir_brc"), src, dst)
+
+def npuir_fill(buffer, value):
+    """Fill a buffer or buffer region with a specified value.
+       Use broadcast to fill the specified buffer or buffer region with the required values.
+
+    
+    Args:
+        buffer (Union[tir.Buffer, tir.BufferRegion]): Either a TVM buffer or buffer region to be filled
+        value (tir.PrimExpr): The value to fill the buffer with
+
+    Returns:
+        tir.Call: A handle to the npuir_fill operation
+    """
+
+    if not isinstance(buffer, (tir.Buffer, tir.BufferRegion)):
+        raise TypeError("buffer must be a tir.Buffer or tir.BufferRegion")
+    if not isinstance(value, tir.PrimExpr):
+        raise TypeError("value must be a tir.PrimExpr")
+
+    fill_call = npuir_brc(value, buffer)
+    return fill_call
+
+def npuir_clear(buffer):
+    """Clear a buffer by filling it with zeros.
+    
+    Args:
+        buffer (Union[tir.Buffer, tir.Var]): Either a TVM buffer or a variable that contains a buffer region
+    
+    Returns:
+        A fill operation that sets the buffer contents to zero
+        
+    Raises:
+        ValueError: If the buffer variable contains an invalid buffer region
+    """
+
+    zero = tir.const(0, "int32")
+
+    if isinstance(buffer, tir.Var) and has_let_value(buffer):
+        buffer_region = get_let_value(buffer)  # Get the actual buffer region from variable
+        if isinstance(buffer_region, tir.BufferRegion):
+            return npuir_fill(buffer_region, zero)
+        else:
+            raise ValueError(f"Invalid buffer region: {buffer_region}")
+    return npuir_fill(buffer, zero)
 
 
 def npuir_cast(src, dst, size=[], round_mode="rint"):
