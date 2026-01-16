@@ -2808,6 +2808,10 @@ void CodeGenTileLangNPUIRDEV::LoopCarriedVarCollector::VisitExpr_(
     process_call_arg(0);
     process_call_arg(1);
     process_call_arg(2);
+  } else if (call->op.same_as(Op::Get("tl.npuir_reduce"))){
+            tvm::tl::NpuirReduce npuirop(call->args, outer_->vmap);
+            check_var(npuirop.src->data.get());
+            check_var(npuirop.dst->data.get());
   }
   tir::StmtExprVisitor::VisitExpr_(call);
 }
