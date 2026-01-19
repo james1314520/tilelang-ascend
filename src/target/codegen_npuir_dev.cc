@@ -1517,7 +1517,7 @@ void CodeGenTileLangNPUIRDEV::VcastCodegen(const CallNode *op) {
   SetVarValue(npuirop.dst, newCastOp->getResult(0));
 }
 
-/// Generate hivm.hir.vreduce for tl.npuir_cast.
+/// Generate hivm.hir.vreduce for tl.npuir_reduce.
 /// before:
 ///    T.npuir_reduce(A, B, "rint")
 /// after:
@@ -2028,6 +2028,36 @@ void CodeGenTileLangNPUIRDEV::DebugPrintCodegen(const CallNode *op) {
                                        mlir::hivm::TCoreTypeAttr{});
 }
 
+/// Generate hivm.hir.vreduce for tl.npuir_reshape.
+/// before:
+///    T.npuir_reshape(A, B)
+/// after:
+///    %.* = tensor.reshape %a(%b) outs(%c) -> tensor<>
+void CodeGenTileLangNPUIRDEV::ReshapeCodegen(const CallNode *op) {
+  tvm::tl::NpuirReshape npuirop(op->args, this->vmap);
+  Value src = GetVarValue(npuirop.src);
+  const auto &dstShape = npuirop.dst_shape;
+  auto shapeTensorType =
+      mlir::RankedTensorType::get({dstShape.size()}, builder.getIndexType());
+  auto shapeAttr =
+      mlir::DenseIntElementsAttr::get(shapeTensorType, dstShape);
+  Value shapeTensor =
+      builder.create<mlir::arith::ConstantOp>(builder.getUnknownLoc(), shapeAttr);
+
+  auto srcTensorTy = src.getType().cast<mlir::RankedTensorType>();
+  auto resultTensorTy =
+      mlir::RankedTensorType::get(dstShape,
+                                  srcTensorTy.getElementType());
+  Value reshaped =
+      builder.create<mlir::tensor::ReshapeOp>(
+          builder.getUnknownLoc(),
+          resultTensorTy,
+          src,
+          shapeTensor);
+
+  SetVarValue(npuirop.dst, reshaped);
+}
+
 void CodeGenTileLangNPUIRDEV::CallExternCodegen(const CallNode *op) {
   // Todo: Implementation pending
 }
@@ -2135,6 +2165,8 @@ mlir::Value CodeGenTileLangNPUIRDEV::VisitExpr_(const CallNode *op) {
   } else if (op->op.same_as(Op::Get("tl.npuir_debug_print_var")) ||
              op->op.same_as(Op::Get("tl.npuir_debug_print_buffer_value"))) {
     DebugPrintCodegen(op);
+} else if (op->op.same_as(Op::Get("tl.npuir_reshape"))) {
+    ReshapeCodegen(op);
   } else {
     VisitExpr_(op);
   }
