@@ -142,16 +142,16 @@ def _symbolic_var_promoter_pass(func: PrimFunc):
 
 
 def _get_npucompiler_path() -> str:
-    # Set the environment variables for the compiler
-    ascend_home = os.environ.get("ASCEND_HOME_PATH")
-    if ascend_home is None:
-        raise Exception("CANN environment not detected (ASCEND_HOME_PATH)")
-    bisheng_install_path = os.environ.get("BISHENG_INSTALL_PATH")
-    if bisheng_install_path is not None:
-        return os.path.join(bisheng_install_path, "bishengir-compile")
-    else:
-        bishengir = os.path.join(ascend_home, "bisheng_toolkit", "bishengir", "bin")
-        return os.path.join(bishengir, "bishengir-compile")
+    # Get bishengir-compile from PATH
+    npu_compiler_path = shutil.which("bishengir-compile")
+    if npu_compiler_path is None:
+        npu_compiler_root = os.getenv("TRITON_NPU_COMPILER_PATH", "")
+        if npu_compiler_root is None:
+            raise EnvironmentError(
+                "Couldn't find executable bishengir-compile or TRITON_NPU_COMPILER_PATH."
+            )
+        npu_compiler_path = os.path.join(npu_compiler_root, "npuc")
+    return npu_compiler_path
 
 
 def convert_sigtype_to_int(sigty: str):
